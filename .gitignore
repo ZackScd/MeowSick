@@ -1,0 +1,25 @@
+# Ignorar variables de entorno y credenciales
+*.env
+settings/.env
+
+# Ignorar caché de Python
+__pycache__/
+*.pyc
+
+# Ignorar carpetas de descargas y compilación
+downloads/
+build/
+dist/
+
+# Archivos generados por empaquetado (build.py y PyInstaller)
+build_dist_temp/
+*.spec
+version_info.txt
+
+# Bases de datos dinámicas y memoria de la IA
+cogs/AI/memory/known_users.json
+cogs/AI/memory/estado_animo.json
+cogs/AI/memory/historial_estados.json
+cogs/AI/memory/memoria.json
+cogs/AI/memory/opiniones.json
+cogs/AI/memory/autoconcepto.json
