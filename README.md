@@ -89,6 +89,58 @@ Esta sección detalla la arquitectura interna para quienes deseen modificar el c
 
 ---
 
+## 📂 Estructura del Proyecto
+
+La arquitectura de archivos de MeowSick está diseñada para separar estrictamente la interfaz gráfica (MVC), el backend del bot (Cogs) y los datos persistentes del usuario (Configuraciones y Base de Datos Vectorial/JSON).
+
+```text
+MeowSick/
+├── launcher.py                 # Punto de entrada de la UI gráfica (CustomTkinter)
+├── meowSick.py                 # Punto de entrada del Bot de Discord (Proceso asíncrono)
+├── build.py                    # Script de compilación (PyInstaller) para empaquetado standalone
+├── README.md                   # Documentación principal
+├── ROADMAP.md                  # Plan de refactorización y hoja de ruta
+├── CHANGELOG.md                # Registro de cambios y versiones
+├── views/                      # [Vistas UI] Archivos modulares de la interfaz gráfica
+│   ├── dashboard_view.py
+│   ├── modules_view.py
+│   ├── music/                  # Vistas específicas del reproductor
+│   ├── config/                 # Vistas de configuración (General, IA, Música)
+│   ├── ai/                     # Editores visuales de Memoria y Personalidad
+│   └── guides/                 # Interfaces de las guías de ayuda
+├── settings/                   # [Datos de Usuario] Configuraciones locales
+│   ├── config.json             # Ajustes globales, estados de los toggles y límites
+│   ├── outputs.json            # Textos personalizables de los mensajes del bot
+│   ├── .env                    # Tokens y API Keys (Discord, Google AI, etc.)
+│   └── locales/                # Sistema de internacionalización (es.json, en.json)
+├── cogs/                       # [Backend] Módulos operacionales del Bot
+│   ├── help.py                 # Comando de ayuda nativo
+│   ├── music.py                # Motor asíncrono de audio, colas y descargas (yt-dlp)
+│   └── AI/                     # [Ecosistema Cognitivo de IA]
+│       ├── core.py             # Lóbulo Frontal (Chat, Visión, TTS, STT, Búsqueda web)
+│       ├── memory.py           # Hipocampo (Extracción de hechos, juicios sociales, autoconcepto)
+│       ├── evolution.py        # Sistema Límbico (Análisis de humor pasivo y decaimiento)
+│       ├── identity.py         # Gestor dinámico de personalidad e inyección de contexto
+│       ├── utils.py            # Módem de red y llamadas a API (Gemini / Ollama)
+│       └── memory/             # [Base de Datos RAG Local] Archivos dinámicos de la IA
+│           ├── identity.txt            # Quién es la IA
+│           ├── guidelines.txt          # Reglas estrictas de comportamiento
+│           ├── known_users.json        # Registro de IDs conocidos y roles base
+│           ├── memoria.json            # Hechos biográficos por usuario
+│           ├── opiniones.json          # Nivel de afinidad y juicio por usuario
+│           ├── afinidad_rangos.json    # Reglas de respuesta según afinidad
+│           ├── autoconcepto.json       # Gustos descubiertos y creencias propias
+│           ├── estado_animo.json       # Emoción actual
+│           ├── historial_estados.json  # Log de cambios de humor
+│           ├── estados_posibles.json   # Lista de emociones permitidas
+│           └── prompts.json            # Instrucciones del sistema cognitivo (Subconsciente)
+└── res/                        # [Recursos Estáticos]
+    ├── img/                    # Íconos, avatares y logos (.ico, .png)
+    └── ffmpeg/                 # Binarios de codificación de audio (ffmpeg.exe)
+```
+
+---
+
 ## 🏗️ Arquitectura del Sistema (IPC)
 
 El programa opera mediante un paradigma de **Multiprocesamiento (IPC - Inter-Process Communication)**, dividiendo el sistema en dos piezas principales que se comunican entre sí en tiempo real:
