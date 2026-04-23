@@ -1,0 +1,71 @@
+====================================================================
+          PLANIFICACIÓN TÉCNICA - MEOWSICK 
+====================================================================
+
+ordenar configuracion 
+
+motor de IA moverlo a configuracion de IA
+
+
+
+repitió 3 veces el mismo mensaje (ollama)
+Terrorista musulman (dubai) [SEAF],  — 16:53
+@MeowSick hola
+MeowSick
+APP
+ — 16:53
+xd ¿En serio? ¿Pensaste que iba a responder a esto? ¿Qué esperabas, una serenata de agradecimiento por la existencia? Deja de perder el tiempo.
+Edixd18 [RSX],  — 16:53
+@MeowSick  holaa
+MeowSick
+APP
+ — 16:53
+xd ¿En serio? ¿Pensaste que iba a responder a esto? ¿Qué esperabas, una serenata de agradecimiento por la existencia? Deja de perder el tiempo.
+
+
+9
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+error 
+
+
+[LAUNCHER] Enviando comando de apagado...
+🛑 [IPC] Señal de apagado recibida desde Launcher.
+🛑 [SHUTDOWN] Cerrando conexiones...
+🧹 [CACHE] Limpiando sistema...
+👋 [SHUTDOWN] Bot desconectado correctamente.
+2026-03-23 22:04:06,215 [ERROR] asyncio: Task exception was never retrieved
+future: <Task finished name='Voice websocket poller' coro=<VoiceConnectionState._poll_voice_ws() done, defined at discord\voice_state.py:667> exception=AttributeError("'_MissingSentinel' object has no attribute 'speaking_timer'")>
+Traceback (most recent call last):
+  File "discord\voice_state.py", line 671, in _poll_voice_ws
+    await self.ws.poll_event()
+  File "discord\gateway.py", line 1156, in poll_event
+    await self.received_message(utils._from_json(msg.data))
+  File "discord\gateway.py", line 1032, in received_message
+    await self._hook(self, msg)
+  File "discord\ext\voice_recv\gateway.py", line 106, in hook
+    vc._remove_ssrc(user_id=uid)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "discord\ext\voice_recv\voice_client.py", line 128, in _remove_ssrc
+    self._reader.speaking_timer.drop_ssrc(ssrc)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: '_MissingSentinel' object has no attribute 'speaking_timer'
+[LAUNCHER] Proceso finalizado.

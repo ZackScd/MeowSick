@@ -1,0 +1,43 @@
+{
+    "prefix": "!",
+    "modules": {
+        "music": true,
+        "ia": false,
+        "help": true
+    },
+    "ai_config": {
+        "target_channels": [],
+        "listen_to_bots": true,
+        "enable_chat": true,
+        "enable_vision": true,
+        "enable_safety_filters": false,
+        "image_size_limit_mb": 8.0,
+        "enable_tts": true,
+        "tts_send_text": false,
+        "enable_stt": true,
+        "enable_web_search": true,
+        "auto_web_search": true,
+        "web_search_method": "google",
+        "web_search_max_results": 3,
+        "tts_voice": "es-MX-DaliaNeural",
+        "vision_lookback_limit": 10,
+        "context_window": 15,
+        "mood_history_limit": 10,
+        "memory_buffer_limit": 8,
+        "mood_buffer_limit": 5,
+        "mood_decay_hours": 2.0,
+        "enable_history_limit": true,
+        "history_save_limit": 50,
+        "enable_mood_analysis": true,
+        "enable_memory_learning": true,
+        "aff_min": -100,
+        "aff_max": 100,
+        "tts_engine": "nube_edge",
+        "tts_rvc": false,
+        "ai_engine": "nube",
+        "ollama_endpoint": "http://localhost:11434",
+        "ollama_model": "gemma3",
+        "ollama_fallback": false,
+        "gamer_mode": false
+    }
+}
