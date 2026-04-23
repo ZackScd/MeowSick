@@ -222,10 +222,16 @@ Una vez que el código esté refactorizado y documentado, se pueden abordar prob
         -   `aiohttp.ClientTimeout(total=180)` -> Tiempo máximo de espera (Timeout) para modelos locales pesados.
 
 #### Tarea 17: Robustecimiento del Sistema IPC
--   **Problema**: La comunicación entre el Launcher y el Bot se basa en el parseo de strings con prefijos (`IPC_PROGRESS:`, `CMD_MUSIC:`). Este método es frágil; un cambio en un `print` o un error de formato puede romper la comunicación. Además, la invocación de comandos desde el Launcher depende de un "hack" que reutiliza el último contexto de un canal, lo cual no es fiable.
--   **Solución (A Largo Plazo)**: Investigar y migrar a un sistema IPC más robusto. Opciones:
-    1.  **Sockets Locales**: Establecer un servidor de sockets simple en el bot al que el Launcher se conecte para enviar y recibir comandos JSON estructurados.
-    2.  **API REST Local**: Levantar un micro-servidor web (ej. con `aiohttp`) en el proceso del bot que exponga endpoints para controlarlo (`/music/play`, `/ai/reload`).
+-   **Problema**: La comunicación entre el Launcher y el Bot se basa en el parseo de strings con prefijos (`IPC_PROGRESS:`, `CMD_MUSIC:`). Este método es frágil; un `print` accidental en el código del bot puede romper la UI. Además, la invocación de comandos desde el Launcher depende de un "hack" que reutiliza el último contexto de un canal, lo cual es poco fiable y puede fallar.
+-   **Solución (Revisada)**: En lugar de una migración completa a Sockets o una API REST (que podría introducir una complejidad innecesaria), se optará por una **mejora incremental del protocolo actual**. Se mantendrán las tuberías estándar (`stdin`/`stdout`) por su simplicidad y eficiencia, pero se reemplazará el formato de strings por **mensajes JSON estructurados**.
+    -   **Launcher -> Bot**: Enviar un objeto JSON por línea.
+        -   *Antes*: `CMD_MUSIC:play:some song`
+        -   *Ahora*: `{"type": "command", "name": "music_play", "payload": {"query": "some song"}}`
+    -   **Bot -> Launcher**: Enviar un objeto JSON por línea para los eventos de la UI.
+        -   *Antes*: `IPC_PROGRESS:0.5:Cargando...`
+        -   *Ahora*: `{"type": "event", "name": "progress_update", "payload": {"percent": 0.5, "message": "Cargando..."}}`
+    -   **Lógica del Bot**: El `console_listener` del bot se modificará para parsear estos JSON y llamar a funciones internas de los cogs directamente, eliminando por completo la dependencia del "hack" del contexto de Discord.
+    -   **Beneficios**: Esta aproximación soluciona la fragilidad del protocolo y el problema de fiabilidad de los comandos, sin añadir la sobrecarga de gestionar conexiones de red, puertos o un servidor web.
 
 ---
 
@@ -328,4 +334,5 @@ Una vez que el código esté refactorizado y documentado, se pueden abordar prob
   - [ ] Parametrizar variables de probabilidad y timeouts en IA (`core.py`, `utils.py`).
   - [ ] Parametrizar opciones de descarga, red y tiempos de espera en `music.py`.
 - [ ] Tarea 17: Robustecer el Sistema IPC
-  - [ ] Evaluar y preparar la transición a un modelo de Sockets o API REST local asíncrona.
+  - [ ] Migrar la comunicación `stdin`/`stdout` de strings con prefijos a un protocolo basado en JSON.
+  - [ ] Refactorizar el `console_listener` del bot para que invoque funciones internas en lugar de comandos de Discord.
