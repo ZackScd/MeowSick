@@ -129,6 +129,7 @@ Repetir el "Paso 6" metódicamente (limpiando textos, colores y estado local) pa
 -   `create_ai_ranges_frame` -> `views/ai/ranges_editor.py`
 -   `create_ai_self_frame` -> `views/ai/self_editor.py`
 -   `create_ai_prompts_frame` -> `views/ai/prompts_editor.py`
+    -   *Nota de Refactorización*: En todos estos editores (usuarios, memoria, opiniones, rangos), reemplazar los múltiples botones de "Guardar" individuales por fila, por un único botón global de "Guardar Cambios" ubicado en la parte inferior junto a "Recargar".
 
 #### Paso 9: Migración de las Guías
 
@@ -138,12 +139,17 @@ Repetir el "Paso 6" metódicamente (limpiando textos, colores y estado local) pa
 -   `create_privacy_guide_frame` -> `views/guides/privacy_guide_view.py`
 -   `create_local_guide_frame` -> `views/guides/local_guide_view.py`
 
-#### Tarea de Usabilidad: Reorganización del Menú de Configuración de IA
-
--   **Problema**: La configuración del motor de la IA ("Motores de IA") está en el menú principal de configuración, separada de los demás ajustes de la IA, lo cual es poco intuitivo.
--   **Solución**: Centralizar todas las configuraciones de la IA bajo su propio submenú.
-    1.  Eliminar el botón "🤖 Motores de IA" de la barra lateral de configuración principal (la que se genera en `render_config_sidebar`).
-    2.  Añadir un nuevo botón en la barra lateral de ajustes de IA (generada en `render_config_ai_sidebar`) con el nombre "🧠 Núcleo Cognitivo (Motor)". Este botón apuntará a la vista `config_ai_engine`.
+#### Tarea de Usabilidad: Reorganización del Menú de Configuración de IA y Nuevas Funciones
+-   **Problema**: La configuración de IA está fragmentada y carece de opciones avanzadas para gestionar personalidades y reseteos precisos.
+-   **Solución**: Centralizar todas las configuraciones de la IA bajo su propio submenú y mejorar drásticamente la UX.
+    1.  Eliminar el botón "🤖 Motores de IA" de la barra lateral de configuración principal.
+    2.  Añadir un nuevo botón "🧠 Núcleo Cognitivo (Motor)" en la barra lateral de ajustes de IA (`config_ai_engine_view.py`).
+    3.  Renombrar "💥 Amnesia Selectiva" a "🔄 Restablecer" y moverlo a la configuración de IA. Deberá tener una interfaz de dos pestañas (similar a "Autoconcepto"). La primera pestaña ("Memorias" por defecto) permitirá selección granular, incluyendo menús expandibles para archivos compuestos (ej. hacer clic en "Autoconcepto" para desplegar y seleccionar borrar solo "Gustos" u "Opiniones").
+    4.  Crear una nueva vista "🎭 Personalidades Prefabricadas" (`views/config/ai_presets_view.py`) planificada desde ya.
+        - Contendrá un desplegable para seleccionar la personalidad (inicialmente solo la "Por Defecto").
+        - Un panel informativo mostrando los detalles (identidad, personalidad, gustos, etc.) de la selección actual.
+        - Un menú expandible inferior para elegir qué importar y qué conservar del bot actual. Incluirá la opción de limpiar registros o ponerlos por defecto (usuarios conocidos, relaciones), ya que las relaciones pueden ser inherentes a la personalidad importada.
+        - Un botón de "Guardar" precedido por una advertencia nativa integrada en la propia interfaz (sin ventanas emergentes/popups, consistente con los colores y la caja `warn_box` del resto del sistema).
 
 
 ### Fase 3: Estabilización Post-Refactorización
@@ -158,6 +164,22 @@ Los múltiples bloques `except Exception as e: pass` a lo largo del código est�
 #### Paso 11: Afectaciones a Otros Archivos (`build.py` y Config)
 1.  **`build.py`**: Actualizar las banderas `--hidden-import` o `--collect-all` de PyInstaller para incluir la nueva carpeta `views/` y los módulos `shared/`. Modificar la función `create_clean_dist_files()` para que genere automáticamente la carpeta `settings/locales/` y la carpeta de `themes/` al crear una compilación limpia.
 2.  **`config.json`**: Añadir parámetros globales (ej. `"language": "es"`, `"theme": "dark"`) para recordar las preferencias del usuario.
+
+#### Tarea de Corrección: Unificar y Reparar Sistema de Restablecimiento (Factory Reset)
+-   **Problema**: El reseteo de IA está fragmentado ("Amnesia Selectiva" vs "Restablecer a fábrica"). Usa valores hardcodeados incompletos, los rangos de afinidad tienen saltos bruscos, y no permite borrar partes específicas de un mismo archivo compuesto.
+-   **Solución**: Centralizar la lógica de reseteo para que lea las plantillas originales completas (las de `build.py`). Integrarlo con la nueva UI de selección granular expansible. Ajustar los rangos de afinidad base para mayor granularidad (ej: 50-70, 71-85, 86-100) y asegurarse de que el botón de reseteo restaure estos rangos correctamente.
+
+#### Tarea de Corrección: Refinar Valores por Defecto de la IA
+-   **Problema**: La IA se enoja demasiado rápido, ignora la lista de *estados_posibles* inventando los suyos propios, y la identidad inicial es demasiado volátil.
+-   **Solución**: 
+    1. Ajustar la personalidad base a un lienzo en blanco neutral/estable.
+    2. Modificar el prompt de `evolucion_analisis` aplicando una directriz estricta que obligue a la IA a elegir **exclusivamente** de los estados de la lista (o una combinación de ellos), penalizando la invención de emociones no registradas.
+
+#### Tarea de Corrección: Solucionar Bugs de Auto-Reconocimiento y Duplicidad en Memoria
+-   **Problema**: La IA se reconoce a sí misma en el chat como un usuario externo, añadiendo su propio ID a `known_users.json` o `memoria.json`. Además, en ocasiones se generan entradas duplicadas para los mismos usuarios.
+-   **Solución**: 
+    - Añadir validaciones estrictas en el pipeline de memoria (registro de usuarios y extracción de hechos) para ignorar siempre el ID del bot (`self.bot.user.id`).
+    - Implementar verificaciones de unicidad sólidas para fusionar o evitar registros de usuarios repetidos.
 
 ### Fase 4: Documentación General (`README.md`)
 
@@ -241,7 +263,9 @@ Una vez que el código esté refactorizado y documentado, se pueden abordar prob
   - [ ] `views/config/ai_general_view.py`
   - [ ] `views/config/ai_settings_view.py`
   - [ ] `views/config/ai_engine_view.py`
+  - [ ] `views/config/ai_presets_view.py` (Nueva vista de Personalidades)
 - [ ] Paso 8: Migrar Editores de IA
+  - [ ] Reemplazar botones de "Guardar" individuales por un botón global unificado por vista.
   - [ ] `views/ai/identity_editor.py`
   - [ ] `views/ai/moods_editor.py`
   - [ ] `views/ai/moods_history_editor.py`
@@ -260,6 +284,8 @@ Una vez que el código esté refactorizado y documentado, se pueden abordar prob
 - [ ] Tarea de Usabilidad: Reorganizar Menú de Configuración de IA
   - [ ] Eliminar botón de motores del menú de configuración general.
   - [ ] Añadir botón "Núcleo Cognitivo" en el submenú de IA.
+  - [ ] Implementar vista "Restablecer" con pestañas y selección granular expansible.
+  - [ ] Añadir menú de "Personalidades Prefabricadas" con selector, info, y alerta nativa integrada.
 
 **Fase 3: Estabilización Post-Refactorización**
 - [ ] Paso 10: Implementar Sistema de Logging Real (`logs/system.log`)
@@ -270,6 +296,16 @@ Una vez que el código esté refactorizado y documentado, se pueden abordar prob
   - [ ] Ajustar `hidden-import` y `collect-all` en PyInstaller para las nuevas carpetas.
   - [ ] Actualizar la función generadora de entorno limpio en el script de compilación.
   - [ ] Añadir los parámetros globales `language` y `theme` al `config.json`.
+- [ ] Tarea de Corrección: Unificar y Reparar Sistema de Restablecimiento
+  - [ ] Unificar lógica de "Restablecer" con la plantilla base de memoria completa.
+  - [ ] Soportar reseteo parcial de archivos (ej. resetear gustos pero no opiniones).
+  - [ ] Ajustar rangos de afinidad por defecto para mayor granularidad (eliminar salto 50-100).
+- [ ] Tarea de Corrección: Refinar Valores y Prompts
+  - [ ] Estandarizar personalidad base como neutral/estable.
+  - [ ] Modificar prompt de evolución para bloquear invención de estados de ánimo no listados.
+- [ ] Tarea de Corrección: Bugs de Memoria y Auto-Reconocimiento
+  - [ ] Bloquear que el bot registre su propio ID en `known_users.json` y `memoria.json`.
+  - [ ] Añadir validación de unicidad para evitar entradas duplicadas de usuarios.
 
 **Fase 4: Documentación General (`README.md`)**
 - [ ] Paso 12: Redactar Guía de Usuario
