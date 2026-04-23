@@ -23,3 +23,6 @@ cogs/AI/memory/historial_estados.json
 cogs/AI/memory/memoria.json
 cogs/AI/memory/opiniones.json
 cogs/AI/memory/autoconcepto.json
+
+# Instrucciones locales para el Agente IA (Gemini Code Assist)
+GEMINI.md
