@@ -6,6 +6,7 @@ import sys
 import asyncio
 from .utils import ai_manager
 from .identity import identity_manager
+from shared.config_manager import ConfigManager
 
 class Memory(commands.Cog):
     """
@@ -60,25 +61,25 @@ class Memory(commands.Cog):
         }
         for path, default_data in defaults.items():
             if not os.path.exists(path): # Si el archivo no existe en la ruta...
-                with open(path, "w", encoding="utf-8") as f:
-                    json.dump(default_data, f, indent=4) # ...lo crea con su contenido por defecto.
+                ConfigManager.save_json(path, default_data, use_lock=False) # ...lo crea con su contenido por defecto.
 
     def _get_config(self):
         """Lee el archivo de configuración para obtener los límites personalizados."""
-        try:
-            with open(self.settings_path, "r", encoding="utf-8") as f: return json.load(f).get("ai_config", {})
-        except: return {}
+        return ConfigManager.load_json(self.settings_path, use_lock=True).get("ai_config", {})
+        
+    def _get_language_directive(self):
+        full_cfg = ConfigManager.load_json(self.settings_path, use_lock=True) or {}
+        lang_code = full_cfg.get("language", "es")
+        lang_name = "ESPAÑOL (Spanish)" if lang_code == "es" else "ENGLISH"
+        return f"[SYSTEM DIRECTIVE: You must analyze and generate the JSON response exclusively in {lang_name}]\n"
 
     def load_data(self, filename):
         """Utilidad genérica para cargar un archivo JSON de forma segura."""
-        try:
-            with open(filename, "r", encoding="utf-8") as f: return json.load(f) # Lee y decodifica el JSON.
-        except: return {} # En caso de error (archivo corrupto, no encontrado), devuelve un diccionario vacío.
+        return ConfigManager.load_json(filename, use_lock=False)
 
     def save_data(self, filename, data):
         """Utilidad genérica para guardar datos en un archivo JSON con formato legible."""
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, ensure_ascii=False) # Guarda con indentación y permite caracteres UTF-8.
+        ConfigManager.save_json(filename, data, use_lock=False)
 
     def get_opinions_data(self):
         """Método público para que otros módulos (como core.py) puedan leer las opiniones actuales."""
@@ -95,10 +96,7 @@ class Memory(commands.Cog):
 
     def _load_prompt(self, key):
         """Carga una plantilla de prompt específica desde el archivo prompts.json."""
-        try:
-            with open(self.prompts_file, "r", encoding="utf-8") as f:
-                return json.load(f).get(key, "") # Busca la clave (ej: "memoria_opiniones") y devuelve su valor.
-        except: return "" # Devuelve una cadena vacía si hay un error.
+        return ConfigManager.load_json(self.prompts_file, use_lock=False).get(key, "")
 
     async def process_memory_tasks(self):
         """
@@ -125,9 +123,7 @@ class Memory(commands.Cog):
 
         # Busca el archivo de configuración principal para obtener los límites de afinidad.
         config_path = os.path.abspath(os.path.join(self.base_path, "..", "..", "..", "settings", "config.json"))
-        try:
-            with open(config_path, "r", encoding="utf-8") as f: cfg = json.load(f) # Carga config.json.
-        except: cfg = {}
+        cfg = ConfigManager.load_json(config_path, use_lock=True)
         aff_min = cfg.get("ai_config", {}).get("aff_min", -100) # Límite mínimo de afinidad.
         aff_max = cfg.get("ai_config", {}).get("aff_max", 100) # Límite máximo de afinidad.
 
@@ -138,6 +134,7 @@ class Memory(commands.Cog):
                              .replace("{aff_min}", str(aff_min))\
                              .replace("{aff_max}", str(aff_max))
 
+        final_prompt = self._get_language_directive() + final_prompt
         resp = await ai_manager.generate_content("memory", final_prompt) # Llama a la IA con el modelo "memory".
         if resp: # Si la IA devolvió una respuesta...
             try:
@@ -161,6 +158,7 @@ class Memory(commands.Cog):
         final_prompt = prompt.replace("{autoconcepto_actual}", json.dumps(current_self, ensure_ascii=False))\
                              .replace("{mensajes}", "\n".join(msgs))
 
+        final_prompt = self._get_language_directive() + final_prompt
         resp = await ai_manager.generate_content("memory", final_prompt) # Llama a la IA.
         if resp: # Si hay respuesta...
             try:
@@ -184,6 +182,7 @@ class Memory(commands.Cog):
 
         final_prompt = prompt.replace("{mensajes}", "\n".join(msgs)) # Rellena la plantilla con la conversación.
         
+        final_prompt = self._get_language_directive() + final_prompt
         resp = await ai_manager.generate_content("memory", final_prompt) # Llama a la IA.
         if resp: # Si hay respuesta...
             try:

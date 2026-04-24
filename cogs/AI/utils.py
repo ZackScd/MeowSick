@@ -3,6 +3,7 @@ import aiohttp # Librería para hacer peticiones web asíncronas sin bloquear el
 import json
 import asyncio
 import sys
+from shared.config_manager import ConfigManager
 
 class AIManager:
     """
@@ -89,10 +90,7 @@ class AIManager:
         else:
             config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "settings", "config.json")
             
-        try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                return json.load(f).get("ai_config", {})
-        except: return {}
+        return ConfigManager.load_json(config_path, use_lock=True).get("ai_config", {})
 
     def _get_safety_settings(self):
         """Consulta localmente si los filtros de seguridad deben estar activados o desactivados."""

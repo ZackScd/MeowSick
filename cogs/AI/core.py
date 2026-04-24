@@ -14,6 +14,7 @@ from PIL import Image
 # Importamos los módulos locales del paquete AI
 from .utils import ai_manager          # Gestor de conexión y peticiones a la API de Gemini
 from .identity import identity_manager # Gestor estático de identidades y usuarios
+from shared.config_manager import ConfigManager
 # Nota: Evolution y Memory se cargan como Cogs separados, 
 # accedemos a ellos vía self.bot.get_cog()
 
@@ -155,10 +156,7 @@ class AICore(commands.Cog):
 
     def _get_config(self):
         """Lee el archivo JSON de configuración y extrae específicamente el bloque de ajustes de IA."""
-        try:
-            with open(self.config_path, "r", encoding="utf-8") as f: # Abre el archivo en modo lectura
-                return json.load(f).get("ai_config", {}) # Devuelve solo el diccionario 'ai_config'
-        except: return {} # Si hay error (no existe el archivo), devuelve diccionario vacío
+        return ConfigManager.load_json(self.config_path, use_lock=True).get("ai_config", {})
 
     def _is_ai_active(self):
         """Comprueba de forma superficial si el módulo entero está encendido."""
@@ -364,10 +362,7 @@ class AICore(commands.Cog):
 
         # Identificar si el mensaje es un comando explícito para evitar duplicar respuestas
         prefix = "!"
-        try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
-                prefix = json.load(f).get("prefix", "!")
-        except: pass
+        prefix = ConfigManager.load_json(self.config_path, use_lock=True).get("prefix", "!")
         is_command = message.content.strip().startswith(prefix)
 
         # Condiciones lógicas que OBLIGAN al bot a dar una respuesta activa

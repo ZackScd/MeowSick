@@ -13,6 +13,7 @@ try:
     import discord.ext.voice_recv as voice_recv
 except ImportError:
     voice_recv = None
+from shared.config_manager import ConfigManager
 
 # --- 1. CONFIGURACIÓN DE ENTORNO Y RUTAS ---
 # Determina el directorio base de ejecución, manejando la diferencia entre
@@ -159,16 +160,16 @@ class Music(commands.Cog):
         self.bot = bot # Guarda la referencia al cliente central del bot.
         self.queues = {} # Mapeo de diccionarios {ID del Servidor: Instancia de MusicQueue}
         self.disconnect_timers = {} # Mapeo de Tareas asíncronas de desconexión {ID del Servidor: asyncio.Task}
-        self.outputs = self._load_json("outputs.json") # Carga las traducciones y respuestas.
-        self.config = self._load_json("config.json") # Carga las variables de configuración genéricas.
+        self.config = self._load_json("config.json") or {} # Carga las variables de configuración genéricas.
+        lang_code = self.config.get("language", "es")
+        self.outputs = self._load_json(f"locales/outputs_{lang_code}.json") or {} # Carga las traducciones y respuestas.
         self.last_contexts = {} # Persistencia del último contexto de comando recibido, vital para comandos IPC desde el Launcher.
 
     def _load_json(self, filename):
         """Utilidad interna para carga segura de archivos de configuración JSON."""
-        try:
-            with open(os.path.join(SETTINGS_DIR, filename), "r", encoding="utf-8") as f: # Abre el archivo en modo lectura.
-                return json.load(f) # Parsea el texto del archivo a un diccionario de Python.
-        except: return {} # Retorna un diccionario vacío si el archivo no existe o hay error de lectura.
+        path = os.path.join(SETTINGS_DIR, filename)
+        use_lock = filename == "config.json" or "outputs_" in filename
+        return ConfigManager.load_json(path, use_lock=use_lock)
 
     async def _send_msg(self, ctx, key, **kwargs):
         """

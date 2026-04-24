@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+from shared.config_manager import ConfigManager
 
 class IdentityModule:
     """
@@ -46,20 +47,16 @@ class IdentityModule:
                 {"min": 11, "max": 49, "etiqueta": "Amigable", "descripcion": "Te cae bien. Eres más abierta y disfrutas hablar con él."},
                 {"min": 50, "max": 100, "etiqueta": "Cercano", "descripcion": "Le tienes mucho aprecio o cariño. Sé dulce y protectora."}
             ]
-            with open(self.rangos_file, "w", encoding="utf-8") as f:
-                json.dump(defaults, f, indent=4, ensure_ascii=False)
+            ConfigManager.save_json(self.rangos_file, defaults, use_lock=False)
 
     def _load_users(self):
         """Carga el diccionario estático de usuarios desde el disco."""
-        try:
-            with open(self.users_file, "r", encoding="utf-8") as f:
-                return json.load(f) # Decodifica JSON a diccionario Python
-        except: return {} # Retorna diccionario vacío si hay corrupción
+        data = ConfigManager.load_json(self.users_file, use_lock=False)
+        return data if isinstance(data, dict) else {}
 
     def _save_users(self, data):
         """Guarda el diccionario de usuarios en disco con formato legible (indent=4)."""
-        with open(self.users_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4, ensure_ascii=False)
+        ConfigManager.save_json(self.users_file, data, use_lock=False)
 
     def get_identity_block(self):
         """
@@ -72,7 +69,13 @@ class IdentityModule:
             with open(self.identity_file, "r", encoding="utf-8") as f: identidad = f.read() # Lee texto de personalidad
             with open(self.guidelines_file, "r", encoding="utf-8") as f: guidelines = f.read() # Lee texto de reglas
         except: pass
-        return f"{identidad}\n\n[DIRECTRICES]\n{guidelines}" # Retorna el String fusionado que 'core.py' usará como base
+        
+        config_path = os.path.abspath(os.path.join(self.base_path, "..", "..", "..", "settings", "config.json"))
+        cfg = ConfigManager.load_json(config_path, use_lock=True) or {}
+        lang_code = cfg.get("language", "es")
+        lang_name = "ESPAÑOL (Spanish)" if lang_code == "es" else "ENGLISH"
+        
+        return f"[SYSTEM DIRECTIVE: You must process thoughts and communicate exclusively in {lang_name}]\n\n{identidad}\n\n[DIRECTRICES]\n{guidelines}"
 
     def register_user_if_new(self, user):
         """
@@ -132,15 +135,12 @@ class IdentityModule:
             # Instrucción de comportamiento basada en afinidad
             rangos_file = os.path.join(self.base_path, "afinidad_rangos.json") # Lee los niveles configurados en el Launcher
             matched_rango = None # Puntero para guardar si encajamos en algún rango
-            if os.path.exists(rangos_file):
-                try:
-                    with open(rangos_file, "r", encoding="utf-8") as f:
-                        rangos = json.load(f)
-                    for r in rangos: # Revisa uno por uno
-                        if r.get("min", -100) <= afinidad <= r.get("max", 100): # ¿La afinidad del usuario cabe en este margen?
-                            matched_rango = r # ¡Rango encontrado!
-                            break # Detiene la búsqueda
-                except: pass
+            rangos = ConfigManager.load_json(rangos_file, use_lock=False)
+            if isinstance(rangos, list):
+                for r in rangos: # Revisa uno por uno
+                    if r.get("min", -100) <= afinidad <= r.get("max", 100): # ¿La afinidad del usuario cabe en este margen?
+                        matched_rango = r # ¡Rango encontrado!
+                        break # Detiene la búsqueda
             
             if matched_rango: # Si se emparejó exitosamente con un nivel de afinidad personalizado...
                 # Le dice a la IA exactamente cómo debe actuar hacia ese usuario

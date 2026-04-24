@@ -6,6 +6,7 @@ import asyncio
 import sys
 from .utils import ai_manager
 from .identity import identity_manager
+from shared.config_manager import ConfigManager
 
 class Evolution(commands.Cog):
     """
@@ -59,44 +60,32 @@ class Evolution(commands.Cog):
     def _ensure_files(self):
         """Crea las estructuras JSON por defecto si los archivos de estado no existen."""
         if not os.path.exists(self.state_file):
-            with open(self.state_file, "w", encoding="utf-8") as f:
-                json.dump({"estado_animo": "Neutral: Solo existiendo."}, f) # Estado inicial por defecto
+            ConfigManager.save_json(self.state_file, {"estado_animo": "Neutral: Solo existiendo."}, use_lock=False)
         if not os.path.exists(self.history_file):
-            with open(self.history_file, "w", encoding="utf-8") as f:
-                json.dump([], f) # Historial vacío
+            ConfigManager.save_json(self.history_file, [], use_lock=False)
 
     def _get_config(self):
         """Lee el archivo de configuración para obtener los límites personalizados."""
-        try:
-            with open(self.settings_path, "r", encoding="utf-8") as f:
-                return json.load(f).get("ai_config", {})
-        except: return {}
+        return ConfigManager.load_json(self.settings_path, use_lock=True).get("ai_config", {})
 
     def get_current_mood(self):
         """Lee el archivo JSON para devolver el estado emocional vigente del bot."""
-        try:
-            with open(self.state_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                return data.get("estado_animo", "Neutral") # Retorna el valor o 'Neutral'
-        except: return "Neutral" # Respaldo a prueba de errores de lectura
+        data = ConfigManager.load_json(self.state_file, use_lock=False)
+        return data.get("estado_animo", "Neutral") if isinstance(data, dict) else "Neutral"
 
     def get_mood_history(self, limit=None):
         """Devuelve los últimos estados de ánimo registrados para dar contexto de transición."""
         if limit is None:
             limit = self._get_config().get("mood_history_limit", 10) # Usa el límite configurable o 10 por defecto
-        try:
-            with open(self.history_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                # Extrae solo el string de texto de los últimos 'limit' registros
-                return [entry.get("estado_animo") for entry in data[-limit:]] 
-        except: return []
+        data = ConfigManager.load_json(self.history_file, use_lock=False)
+        if isinstance(data, list):
+            return [entry.get("estado_animo") for entry in data[-limit:] if isinstance(entry, dict)]
+        return []
 
     def _load_prompt(self, key):
         """Recupera la plantilla de instrucciones específica para el análisis de evolución."""
-        try:
-            with open(self.prompts_file, "r", encoding="utf-8") as f:
-                return json.load(f).get(key, "") # Busca la llave (ej: 'evolucion_analisis')
-        except: return ""
+        data = ConfigManager.load_json(self.prompts_file, use_lock=False)
+        return data.get(key, "") if isinstance(data, dict) else ""
 
     async def process_mood_analysis(self):
         """
@@ -148,13 +137,11 @@ class Evolution(commands.Cog):
                 
                 if new_mood:
                     # Sobrescribe el archivo de estado con la nueva emoción
-                    with open(self.state_file, "w", encoding="utf-8") as f:
-                        json.dump({"estado_animo": new_mood}, f, ensure_ascii=False)
+                    ConfigManager.save_json(self.state_file, {"estado_animo": new_mood}, use_lock=False)
                     
                     # Lee el historial completo existente
-                    full_hist = []
-                    if os.path.exists(self.history_file):
-                        with open(self.history_file, "r", encoding="utf-8") as f: full_hist = json.load(f)
+                    full_hist_raw = ConfigManager.load_json(self.history_file, use_lock=False)
+                    full_hist = full_hist_raw if isinstance(full_hist_raw, list) else []
                     
                     # Añade el nuevo estado con su marca de tiempo oficial de Discord
                     full_hist.append({"timestamp": str(discord.utils.utcnow()), "estado_animo": new_mood})
@@ -168,8 +155,7 @@ class Evolution(commands.Cog):
                         full_hist = full_hist[-limit_save:]
                     
                     # Guarda el historial actualizado
-                    with open(self.history_file, "w", encoding="utf-8") as f:
-                        json.dump(full_hist, f, indent=4, ensure_ascii=False)
+                    ConfigManager.save_json(self.history_file, full_hist, use_lock=False)
                         
                     print(f"🧠 ✨ [EVOLUTION] Estado actualizado: {new_mood}")
             except Exception as e:
@@ -202,12 +188,10 @@ class Evolution(commands.Cog):
                 print(f"🧠 📉 [EVOLUTION] Han pasado {decay_hours} horas sin actividad. El humor vuelve a Neutral.")
                 new_mood = "Neutral: Me he calmado tras un largo rato sin interactuar con nadie."
                 
-                with open(self.state_file, "w", encoding="utf-8") as f:
-                    json.dump({"estado_animo": new_mood}, f, ensure_ascii=False)
+                ConfigManager.save_json(self.state_file, {"estado_animo": new_mood}, use_lock=False)
                 
-                full_hist = []
-                if os.path.exists(self.history_file):
-                    with open(self.history_file, "r", encoding="utf-8") as f: full_hist = json.load(f)
+                full_hist_raw = ConfigManager.load_json(self.history_file, use_lock=False)
+                full_hist = full_hist_raw if isinstance(full_hist_raw, list) else []
                 full_hist.append({"timestamp": str(now), "estado_animo": new_mood})
                 
                 enable_limit = self._get_config().get("enable_history_limit", True)
@@ -215,8 +199,7 @@ class Evolution(commands.Cog):
                     limit_save = max(self._get_config().get("history_save_limit", 50), self._get_config().get("mood_history_limit", 10))
                     full_hist = full_hist[-limit_save:]
                 
-                with open(self.history_file, "w", encoding="utf-8") as f:
-                    json.dump(full_hist, f, indent=4, ensure_ascii=False)
+                ConfigManager.save_json(self.history_file, full_hist, use_lock=False)
 
     @mood_decay_loop.before_loop
     async def before_decay_loop(self):

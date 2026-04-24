@@ -10,6 +10,7 @@ import signal
 import logging
 import socket
 from dotenv import load_dotenv
+from shared.config_manager import ConfigManager
 
 # --- 1. CONFIGURACIÓN DE ENTORNO Y RUTAS ---
 # Determina el directorio base del proyecto. Es crucial para que el empaquetado con PyInstaller funcione.
@@ -64,14 +65,13 @@ class MeowSickBot(commands.Bot):
         Retorna el contenido del JSON o el valor por defecto en caso de error.
         """
         path = os.path.join(SETTINGS_DIR, filename)
+        use_lock = filename == "config.json" or "outputs_" in filename
         if not os.path.exists(path):
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(default, f, indent=4)
+            ConfigManager.save_json(path, default, use_lock=use_lock)
             return default
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except: return default
+        
+        data = ConfigManager.load_json(path, use_lock=use_lock)
+        return data if data else default
 
     async def setup_hook(self):
         """
@@ -207,7 +207,8 @@ class MeowSickBot(commands.Bot):
         print("  📡 Esperando comandos...")
         
         # Lógica para enviar un mensaje de bienvenida a un canal específico.
-        outputs = self._load_json("outputs.json", {})
+        lang_code = self.config.get("language", "es")
+        outputs = self._load_json(f"locales/outputs_{lang_code}.json", {})
         welcome_msg = outputs.get("welcome_message", "")
         
         if welcome_msg:

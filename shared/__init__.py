@@ -1,0 +1,1 @@
+# Módulos compartidos entre el Launcher y el Bot
