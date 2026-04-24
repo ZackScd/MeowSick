@@ -61,3 +61,11 @@ Todas las modificaciones, refactorizaciones y nuevas implementaciones realizadas
 - Adaptado `launcher.py` en la vista de Configuración General y Configuración de Música para que lea y edite correctamente `outputs_XX.json` basándose en el idioma activo (Paso 3.2).
 - Adaptados `meowSick.py` y `cogs/music.py` para cargar los mensajes de respuesta dinámicamente según el idioma configurado en `config.json` (Paso 3.2).
 - Implementada la inyección dinámica de idioma en los Prompts de la IA (`cogs/AI/identity.py` y `cogs/AI/memory.py`), forzando al ecosistema cognitivo a analizar y generar texto/JSON estrictamente en el idioma configurado en el sistema (Paso 3.3).
+- Diseñada e implementada la estrategia de inyección del `LanguageManager` en el ecosistema del bot. Se instanció de manera centralizada en `MeowSickBot`, proveyendo acceso global a todos los Cogs mediante `self.bot.lang` y actualizándose en caliente (Paso 3.4).
+- Extraídos todos los strings de inicialización, logs asíncronos y mensajes de eventos de sistema (IPC) de `meowSick.py` hacia `es.json` y `en.json` (Paso 3.4).
+- Extraídos y traducidos los logs operativos y alertas de consola del motor de audio (`cogs/music.py`) hacia el sistema i18n, actualizando el parser IPC de `launcher.py` para entender múltiples idiomas (Paso 3.4).
+- Extraídos y traducidos absolutamente todos los logs y mensajes de sistema de los módulos cognitivos de la IA (`core.py`, `memory.py`, `evolution.py`, `utils.py` y `identity.py`), implementando carga perezosa (`@property`) del `LanguageManager` en Singletons globales (Paso 3.4).
+- Importadas herramientas de `python-dotenv` y declarada la constante global `ENV_PATH` en `launcher.py` para preparar la migración segura de credenciales (Paso 4.1).
+- Refactorizada la lectura y escritura de credenciales (`DISCORD_TOKEN`, `ADMIN_ID`, `WELCOME_CHANNEL_ID`) en la Configuración General usando `dotenv_values` y `set_key` (Paso 4.2).
+- Refactorizada la lectura y escritura de variables en la Configuración de Música (`PLAYLIST_URL`) y Configuración de IA (`AI_TARGET_CHANNELS`, `GEMINI_API_KEY`) utilizando `python-dotenv` (Pasos 4.3 y 4.4).
+- Eliminados los métodos manuales y obsoletos `load_env_dict`, `update_env_key` y `save_env` de `launcher.py`, concluyendo la migración a `python-dotenv` y finalizando la Fase 1 (Paso 4.5).

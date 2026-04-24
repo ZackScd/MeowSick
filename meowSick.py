@@ -11,6 +11,7 @@ import logging
 import socket
 from dotenv import load_dotenv
 from shared.config_manager import ConfigManager
+from shared.language_manager import LanguageManager
 
 # --- 1. CONFIGURACIÓN DE ENTORNO Y RUTAS ---
 # Determina el directorio base del proyecto. Es crucial para que el empaquetado con PyInstaller funcione.
@@ -42,6 +43,9 @@ class MeowSickBot(commands.Bot):
     def __init__(self):
         # Carga la configuración principal desde 'config.json'. Si no existe, crea uno con valores por defecto.
         self.config = self._load_json("config.json", {"prefix": "!", "owner_id": 0})
+        
+        lang_code = self.config.get("language", "es")
+        self.lang = LanguageManager(os.path.join(SETTINGS_DIR, "locales"), lang_code)
         
         # Define los 'Intents' del bot. 'all()' activa todos los eventos,
         # lo cual es necesario para funcionalidades como leer el contenido de los mensajes y rastrear miembros del servidor.
@@ -78,7 +82,7 @@ class MeowSickBot(commands.Bot):
         Hook que se ejecuta automáticamente después del login pero antes de conectarse al WebSocket.
         Es el lugar ideal para la configuración asíncrona inicial, como la carga de cogs.
         """
-        print("IPC_PROGRESS:0.1:Limpiando caché...")
+        print(f"IPC_PROGRESS:0.1:{self.lang.get('sys_ipc_prog_clean')}")
         self.clean_cache() # Realiza una limpieza de archivos temporales al iniciar.
         await self.sync_modules()
         # La sincronización de comandos de barra (slash commands) se puede habilitar aquí si se utilizan.
@@ -89,9 +93,13 @@ class MeowSickBot(commands.Bot):
         Sincroniza el estado de los cogs (módulos) con la configuración en 'config.json'.
         Carga, descarga o recarga extensiones dinámicamente sin necesidad de reiniciar el bot.
         """
-        print("📦 [SYSTEM] Sincronizando módulos...")
         # Recarga la configuración desde el disco para asegurar que se usan los valores más recientes.
         self.config = self._load_json("config.json", {"prefix": "!", "modules": {}})
+        
+        # Refresca el idioma si fue modificado en el launcher
+        self.lang.load_language(self.config.get("language", "es"))
+        print(self.lang.get("sys_sync_modules"))
+        
         modules_conf = self.config.get("modules", {})
         
         # Escanea el directorio de cogs para encontrar todos los módulos disponibles.
@@ -110,7 +118,7 @@ class MeowSickBot(commands.Bot):
         for i, cog_name in enumerate(available_cogs):
             # Escala del 20% al 80% progresivamente por cada módulo encontrado
             pct = 0.2 + (i / max(1, total_cogs)) * 0.6
-            print(f"IPC_PROGRESS:{pct:.2f}:Cargando {cog_name}...")
+            print(f"IPC_PROGRESS:{pct:.2f}:{self.lang.get('sys_ipc_prog_load').format(module=cog_name)}")
             
             ext_name = f"cogs.{cog_name}"
             # Si no está en config, asumimos False (Desactivado) para seguridad
@@ -124,7 +132,7 @@ class MeowSickBot(commands.Bot):
             # Lógica especial para cargar los submódulos de IA (Compatible con PyInstaller)
             if cog_name.upper() == "AI":
                 if should_load:
-                    print(f"  🧠 Inicializando módulo principal: {cog_name}")
+                    print(self.lang.get("sys_ai_init").format(cog_name=cog_name))
                 sub_cogs = ["cogs.AI.core", "cogs.AI.memory", "cogs.AI.evolution"]
                 for sc in sub_cogs:
                     is_loaded = sc in self.extensions
@@ -132,20 +140,20 @@ class MeowSickBot(commands.Bot):
                         if should_load:
                             if is_loaded:
                                 await self.reload_extension(sc)
-                                print(f"    🧠 🔄 Recargado: {sc.split('.')[-1]}")
+                                print(self.lang.get("sys_ai_reload").format(sc=sc.split('.')[-1]))
                             else:
                                 await self.load_extension(sc)
-                                print(f"    🧠 ✅ Cargado: {sc.split('.')[-1]}")
+                                print(self.lang.get("sys_ai_load").format(sc=sc.split('.')[-1]))
                         else:
                             if is_loaded:
                                 await self.unload_extension(sc)
-                                print(f"    🧠 💤 Desactivado: {sc.split('.')[-1]}")
+                                print(self.lang.get("sys_ai_disable").format(sc=sc.split('.')[-1]))
                             else:
-                                print(f"    🧠 💤 Ignorado: {sc.split('.')[-1]}")
+                                print(self.lang.get("sys_ai_ignore").format(sc=sc.split('.')[-1]))
                     except Exception as e:
-                        print(f"    🧠 ❌ Error crítico en {sc}: {e}")
+                        print(self.lang.get("sys_ai_err").format(sc=sc, e=e))
                 if should_load:
-                    print(f"  🧠 ✅ Módulo IA completamente en línea.")
+                    print(self.lang.get("sys_ai_online"))
                 continue
 
             is_loaded = ext_name in self.extensions
@@ -155,30 +163,30 @@ class MeowSickBot(commands.Bot):
                     # Si debe estar cargado, se recarga si ya lo está, o se carga si no.
                     if is_loaded:
                         await self.reload_extension(ext_name)
-                        print(f"  🔄 Recargado: {cog_name}") # Hot-reload
+                        print(self.lang.get("sys_cog_reload").format(cog_name=cog_name)) # Hot-reload
                     else:
                         await self.load_extension(ext_name)
-                        print(f"  ✅ Cargado: {cog_name}")
+                        print(self.lang.get("sys_cog_load").format(cog_name=cog_name))
                 else:
                     if is_loaded:
                         await self.unload_extension(ext_name)
-                        print(f"  💤 Desactivado: {cog_name}")
+                        print(self.lang.get("sys_cog_disable").format(cog_name=cog_name))
                     else:
-                        print(f"  💤 Ignorado (Apagado en Config): {cog_name}")
+                        print(self.lang.get("sys_cog_ignore").format(cog_name=cog_name))
             except Exception as e:
-                print(f"  ❌ Error gestionando {cog_name}: {e}")
+                print(self.lang.get("sys_cog_err").format(cog_name=cog_name, e=e))
                 
         if self.is_ready():
-            print("IPC_PROGRESS:1.0:Módulos actualizados")
+            print(f"IPC_PROGRESS:1.0:{self.lang.get('sys_ipc_prog_done')}")
         else:
-            print("IPC_PROGRESS:0.8:Conectando a Discord...")
+            print(f"IPC_PROGRESS:0.8:{self.lang.get('sys_ipc_prog_conn')}")
 
     def clean_cache(self):
         """
         Elimina directorios y archivos temporales generados por Python (`__pycache__`)
         y por el módulo de música (`downloads`) para asegurar un estado limpio.
         """
-        print("🧹 [CACHE] Limpiando sistema...")
+        print(self.lang.get("sys_cleaning_cache"))
         targets = [
             os.path.join(BASE_DIR, "downloads"),
             os.path.join(BASE_DIR, "__pycache__"),
@@ -191,7 +199,7 @@ class MeowSickBot(commands.Bot):
                     if os.path.isdir(target): shutil.rmtree(target)
                     else: os.remove(target)
                 except Exception as e:
-                    print(f"⚠️ No se pudo limpiar {target}: {e}")
+                    print(self.lang.get("sys_clean_err").format(target=target, e=e))
         
         # Recrea el directorio de descargas después de limpiarlo.
         os.makedirs(os.path.join(BASE_DIR, "downloads"), exist_ok=True)
@@ -201,10 +209,10 @@ class MeowSickBot(commands.Bot):
         Evento que se dispara cuando el bot ha establecido una conexión exitosa con Discord
         y ha finalizado su preparación interna.
         """
-        print("IPC_PROGRESS:1.0:¡En línea!")
-        print(f"\n✨ [ONLINE] Sesión iniciada como: {self.user} (ID: {self.user.id})")
-        print("  ✅ Conexión con Discord establecida.")
-        print("  📡 Esperando comandos...")
+        print(f"IPC_PROGRESS:1.0:{self.lang.get('sys_ipc_prog_online')}")
+        print(f"\n{self.lang.get('sys_online').format(user=self.user, uid=self.user.id)}")
+        print(self.lang.get("sys_discord_conn"))
+        print(self.lang.get("sys_wait_cmds"))
         
         # Lógica para enviar un mensaje de bienvenida a un canal específico.
         lang_code = self.config.get("language", "es")
@@ -217,14 +225,14 @@ class MeowSickBot(commands.Bot):
                 channel = self.get_channel(int(channel_id))
                 if channel:
                     try: await channel.send(welcome_msg)
-                    except Exception as e: print(f"⚠️ No se pudo enviar bienvenida: {e}")
+                    except Exception as e: print(self.lang.get("sys_welcome_err").format(e=e))
 
     async def close(self):
         """
         Sobrescribe el método `close` de la clase base para añadir lógica de limpieza personalizada
         antes de que el bot se desconecte completamente.
         """
-        print("🛑 [SHUTDOWN] Cerrando conexiones...")
+        print(self.lang.get("sys_shutdown_conn"))
         
         # Itera sobre todos los clientes de voz activos y los desconecta forzosamente.
         for vc in self.voice_clients:
@@ -235,7 +243,7 @@ class MeowSickBot(commands.Bot):
         # Llama al método `close` original para manejar la desconexión del WebSocket de Discord.
         await super().close()
         self.clean_cache() # Realiza una última limpieza de caché.
-        print("👋 [SHUTDOWN] Bot desconectado correctamente.")
+        print(self.lang.get("sys_shutdown_ok"))
 
 # --- 3. GESTIÓN DE PROCESOS (IPC) ---
 async def console_listener(bot):
@@ -258,13 +266,13 @@ async def console_listener(bot):
             
             # Procesa el comando de apagado.
             if line == "CMD_STOP":
-                print("🛑 [IPC] Señal de apagado recibida desde Launcher.")
+                print(bot.lang.get("sys_ipc_stop"))
                 await bot.close() # Inicia el proceso de cierre limpio del bot.
                 break
             
             # Procesa el comando de recarga en caliente.
             elif line == "CMD_RELOAD":
-                print("🔄 [IPC] Solicitud de recarga recibida.")
+                print(bot.lang.get("sys_ipc_reload"))
                 # Vuelve a cargar el archivo .env para capturar cambios en las credenciales sin reiniciar el proceso.
                 # `override=True` asegura que las variables existentes se sobrescriban.
                 load_dotenv(os.path.join(SETTINGS_DIR, ".env"), override=True)
@@ -284,7 +292,7 @@ async def console_listener(bot):
 
                     # Valida que el bot esté en un canal de voz.
                     if not bot.voice_clients:
-                        print("🤖 [IPC] Comando de música ignorado: el bot no está en ningún canal de voz.")
+                        print(bot.lang.get("sys_ipc_mus_no_vc"))
                         continue
                     
                     # Obtiene el cliente de voz y el ID del servidor.
@@ -294,23 +302,23 @@ async def console_listener(bot):
                     # Obtiene la instancia del cog de Música.
                     music_cog = bot.get_cog("Music")
                     if not music_cog:
-                        print("🤖 [IPC] Módulo de música no está cargado.")
+                        print(bot.lang.get("sys_ipc_mus_no_cog"))
                         continue
                     
                     # Recupera el último contexto de comando para ese servidor.
                     # Esto es un "hack" para poder invocar comandos como si vinieran de un canal de Discord.
                     last_ctx = music_cog.last_contexts.get(guild_id)
                     if not last_ctx:
-                        print(f"🤖 [IPC] No hay contexto reciente para el servidor {vc.guild.name}. Usa un comando en Discord primero.")
+                        print(bot.lang.get("sys_ipc_mus_no_ctx").format(guild=vc.guild.name))
                         continue
 
                     # Obtiene el objeto de comando a partir de su nombre (acción).
                     command = bot.get_command(action)
                     if not command:
-                        print(f"🤖 [IPC] Comando de música desconocido: {action}")
+                        print(bot.lang.get("sys_ipc_mus_unknown").format(action=action))
                         continue
 
-                    print(f"🤖 [IPC] Invocando comando '{action}' desde el Launcher.")
+                    print(bot.lang.get("sys_ipc_mus_invoke").format(action=action))
                     # Invoca el callback del comando de forma segura en el bucle de eventos.
                     # Se diferencia entre comandos que aceptan un argumento de búsqueda y los que no.
                     if 'search' in command.clean_params:
@@ -318,7 +326,7 @@ async def console_listener(bot):
                     else:
                         asyncio.run_coroutine_threadsafe(command.callback(music_cog, last_ctx), bot.loop)
                 except Exception as e:
-                    print(f"🤖 [IPC] Error procesando comando de música desde el Launcher: {e}")
+                    print(bot.lang.get("sys_ipc_mus_err").format(e=e))
 
         except RuntimeError:
             # Se lanza un RuntimeError si el bucle de eventos se cierra mientras `run_in_executor` espera.
@@ -347,18 +355,17 @@ async def main():
         force=True
     )
 
-    print("IPC_PROGRESS:0.0:Arrancando entorno...")
-    if not prevent_zombies():
-        print("🧟 ⚠️ [CRITICAL] Detectada otra instancia de MeowSick corriendo en segundo plano.")
-        print("Por favor, cierra los procesos 'python.exe' en tu Administrador de Tareas o reinicia tu PC.")
-        return
-
     bot = MeowSickBot()
+    print(f"IPC_PROGRESS:0.0:{bot.lang.get('sys_ipc_prog_boot')}")
+    
+    if not prevent_zombies():
+        print(bot.lang.get("sys_zombie_warn"))
+        return
 
     # Valida la existencia del token de Discord.
     token = os.getenv("DISCORD_TOKEN")
     if not token:
-        print("❌ [ERROR] No se encontró DISCORD_TOKEN en .env")
+        print(bot.lang.get("sys_no_token"))
         return
 
     # Inicia el listener de IPC como una tarea en segundo plano.
@@ -376,7 +383,7 @@ async def main():
         # Silencia el error feo de apagado forzado desde el Launcher
         pass
     except Exception as e:
-        print(f"💀 [CRITICAL] Error fatal: {e}")
+        print(bot.lang.get("sys_fatal_err").format(e=e))
 
 if __name__ == "__main__":
     # Punto de entrada estándar para un script de Python.

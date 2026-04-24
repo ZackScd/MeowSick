@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+from shared.language_manager import LanguageManager
 from shared.config_manager import ConfigManager
 
 class IdentityModule:
@@ -20,8 +21,18 @@ class IdentityModule:
         self.identity_file = os.path.join(self.base_path, "identity.txt") # Personalidad base
         self.guidelines_file = os.path.join(self.base_path, "guidelines.txt") # Reglas estrictas de comportamiento
         
+        self.settings_dir = os.path.abspath(os.path.join(self.base_path, "..", "..", "..", "settings"))
         self._ensure_files() # Asegura que nada falle si el usuario borró los archivos por accidente
         
+    @property
+    def lang(self):
+        cfg = ConfigManager.load_json(os.path.join(self.settings_dir, "config.json"), use_lock=True) or {}
+        lang_code = cfg.get("language", "es")
+        if not hasattr(self, '_lang_cache') or getattr(self, '_lang_code_cache', None) != lang_code:
+            self._lang_code_cache = lang_code
+            self._lang_cache = LanguageManager(os.path.join(self.settings_dir, "locales"), lang_code)
+        return self._lang_cache
+
     def _ensure_files(self):
         """Crea las carpetas y archivos por defecto en el primer inicio de la IA."""
         os.makedirs(self.base_path, exist_ok=True) # Crea la carpeta 'memory'
@@ -105,7 +116,7 @@ class IdentityModule:
                 "relacion": relacion
             }
             self._save_users(users) # Guarda en disco
-            print(f"🧠 📝 [IDENTITY] Nuevo usuario registrado: {user.display_name} ({rol})") # Avisa en consola
+            print(self.lang.get("sys_ai_id_new_user").format(user=user.display_name, role=rol)) # Avisa en consola
 
     def get_user_context(self, user_id, opinions_data):
         """

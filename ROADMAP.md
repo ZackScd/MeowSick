@@ -230,15 +230,18 @@ El diccionario `COLORS` está fuertemente acoplado dentro de `launcher.py`.
     - [x] Adaptar `meowSick.py` y `cogs/music.py` para cargar las respuestas dinámicamente según el idioma configurado en `config.json`.
   - [x] **Paso 3.3: Idioma nativo de la IA**
     - [x] Añadir inyección de idioma en los Prompts del Sistema enviados a la API (Gemini/Ollama) para forzar a la IA a responder y analizar pensamientos en el idioma correcto.
-  - [ ] **Paso 3.4: Internacionalización de Consolas (Logs y Prints)**
-    - [ ] Diseñar estrategia para inyectar `LanguageManager` o una variante en los Cogs y el script principal del bot.
-    - [ ] Extraer strings de inicialización y sistema (`meowSick.py`).
-    - [ ] Extraer strings de eventos del módulo de audio (`music.py`).
-    - [ ] Extraer logs operativos del ecosistema de IA (`core.py`, `memory.py`, `evolution.py`, `utils.py`).
+  - [x] **Paso 3.4: Internacionalización de Consolas (Logs y Prints)**
+    - [x] Diseñar estrategia para inyectar `LanguageManager` o una variante en los Cogs y el script principal del bot.
+    - [x] Extraer strings de inicialización y sistema (`meowSick.py`).
+    - [x] Extraer strings de eventos del módulo de audio (`music.py`).
+    - [x] Extraer logs operativos del ecosistema de IA (`core.py`, `memory.py`, `evolution.py`, `utils.py`).
 
-- [ ] **Paso 4: Estandarización de Variables de Entorno (`python-dotenv`)**
-  - [ ] Eliminar funciones manuales `load_env_dict` y `update_env_key` de `launcher.py`.
-  - [ ] Implementar lectura y escritura con `python-dotenv` (`dotenv.load_dotenv` / `dotenv.set_key`).
+- [x] **Paso 4: Estandarización de Variables de Entorno (`python-dotenv`)**
+  - [x] **Paso 4.1:** Importar `dotenv` (`set_key`, `dotenv_values`) en `launcher.py` y definir ruta estandarizada hacia `.env`.
+  - [x] **Paso 4.2:** Refactorizar lectura/escritura en **Configuración General** (`DISCORD_TOKEN`, `ADMIN_ID`, `WELCOME_CHANNEL_ID`).
+  - [x] **Paso 4.3:** Refactorizar lectura/escritura en **Configuración de Música** (`PLAYLIST_URL`).
+  - [x] **Paso 4.4:** Refactorizar lectura/escritura en **Configuración de IA** (`AI_TARGET_CHANNELS`, `GEMINI_API_KEY`, `GEMINI_API_KEY_2`).
+  - [x] **Paso 4.5:** Limpieza final: Eliminar métodos manuales `load_env_dict` y `update_env_key` de `launcher.py`.
 
 ---
 

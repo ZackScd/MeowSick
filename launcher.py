@@ -7,6 +7,7 @@ import json
 import time
 from tkinter import messagebox
 from PIL import Image
+from dotenv import set_key, dotenv_values
 from shared.config_manager import ConfigManager
 from shared.theme_manager import ThemeManager
 from shared.language_manager import LanguageManager
@@ -20,6 +21,7 @@ else:
     RUNTIME_DIR = BASE_DIR
 
 SETTINGS_DIR = os.path.join(BASE_DIR, "settings")
+ENV_PATH = os.path.join(SETTINGS_DIR, ".env")
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
@@ -571,7 +573,7 @@ class MeowLauncher(ctk.CTk):
         config_data = self._load_json_file("config.json")
         outputs_filename = f"locales/outputs_{self.lang_code}.json"
         outputs_data = self._load_json_file(outputs_filename) or {}
-        env_data = self.load_env_dict()
+        env_data = dotenv_values(ENV_PATH)
 
         self.general_entries = {}
 
@@ -629,13 +631,12 @@ class MeowLauncher(ctk.CTk):
         cfg = self._load_json_file("config.json")
         outputs_filename = f"locales/outputs_{self.lang_code}.json"
         out = self._load_json_file(outputs_filename) or {}
-        env = self.load_env_dict() # Esto lee disco
 
         for key, (entry, source) in self.general_entries.items():
             val = entry.get().strip()
             if source == "config": cfg[key] = val
             elif source == "outputs": out[key] = val
-            elif source == "env": self.update_env_key(key, val) # Escribe directo a disco
+            elif source == "env": set_key(ENV_PATH, key, val) # Escribe directo a disco
 
         self._save_json_file("config.json", cfg)
         self._save_json_file(outputs_filename, out)
@@ -668,7 +669,7 @@ class MeowLauncher(ctk.CTk):
         self.entry_playlist = ctk.CTkEntry(pl_row, fg_color=self.theme_manager.get("bg_dark"), border_color=self.theme_manager.get("border"), text_color=self.theme_manager.get("text"), width=300)
         self.entry_playlist.pack(side="left", fill="x", expand=True, padx=(10, 10))
         
-        env_data = self.load_env_dict()
+        env_data = dotenv_values(ENV_PATH)
         self.entry_playlist.insert(0, env_data.get("PLAYLIST_URL", ""))
         
         pl_help = ctk.CTkFrame(pl_wrapper, fg_color="transparent")
@@ -745,7 +746,7 @@ class MeowLauncher(ctk.CTk):
 
     def save_music_config(self):
         # Guardar Playlist en ENV
-        self.update_env_key("PLAYLIST_URL", self.entry_playlist.get().strip())
+        set_key(ENV_PATH, "PLAYLIST_URL", self.entry_playlist.get().strip())
 
         # Guardar Mensajes en OUTPUTS
         outputs_filename = f"locales/outputs_{self.lang_code}.json"
@@ -1016,7 +1017,7 @@ class MeowLauncher(ctk.CTk):
         cfg = self._load_json_file("config.json")
         ai_cfg = cfg.get("ai_config", {})
         
-        env = self.load_env_dict()
+        env = dotenv_values(ENV_PATH)
         self.entry_ai_channels.delete(0, "end")
         self.entry_ai_channels.insert(0, env.get("AI_TARGET_CHANNELS", ""))
         
@@ -1076,7 +1077,7 @@ class MeowLauncher(ctk.CTk):
         cfg = self._load_json_file("config.json")
         if "ai_config" not in cfg: cfg["ai_config"] = {}
         
-        self.update_env_key("AI_TARGET_CHANNELS", self.entry_ai_channels.get().strip())
+        set_key(ENV_PATH, "AI_TARGET_CHANNELS", self.entry_ai_channels.get().strip())
         
         try:
             cw_val = int(self.entry_ai_context.get().strip())
@@ -2760,7 +2761,7 @@ class MeowLauncher(ctk.CTk):
 
     def load_ai_engine_ui(self):
         cfg = self._load_json_file("config.json").get("ai_config", {})
-        env = self.load_env_dict()
+        env = dotenv_values(ENV_PATH)
         
         self.ai_engine_var.set(cfg.get("ai_engine", "local"))
         self.switch_engine_tabs()
@@ -2779,7 +2780,7 @@ class MeowLauncher(ctk.CTk):
 
     def save_ai_engine(self):
         try:
-            for k, v in self.env_entries.items(): self.update_env_key(k, v.get().strip())
+            for k, v in self.env_entries.items(): set_key(ENV_PATH, k, v.get().strip())
             cfg = self._load_json_file("config.json")
             if "ai_config" not in cfg: cfg["ai_config"] = {}
             cfg["ai_config"]["ai_engine"] = self.ai_engine_var.get()
@@ -2991,9 +2992,10 @@ class MeowLauncher(ctk.CTk):
                     except: pass
                     continue  # No mostrar en consola
 
-                # Capturar canción actual para actualizar UI
-                if "🎵 [REPRODUCIENDO]" in line:
-                    title = line.split("🎵 [REPRODUCIENDO]", 1)[1].strip()
+                # Capturar canción actual para actualizar UI (Dinámico para cualquier idioma)
+                playing_prefix = self.lang_manager.get("sys_mus_playing_log").replace("{title}", "").strip()
+                if playing_prefix in line:
+                    title = line.split(playing_prefix, 1)[1].strip()
                     self.after(0, lambda t=title: self.lbl_now_playing.configure(text=f"{self.lang_manager.get('mus_lbl_now_playing_prefix')}{t}"))
 
                 # ═══ TERMINAL LIMPIA: solo líneas del propio bot (con emojis) o salidas print limpias ═══
@@ -3113,56 +3115,6 @@ class MeowLauncher(ctk.CTk):
                 self.send_to_bot("CMD_RELOAD")
         except Exception as e:
             print(self.lang_manager.get("msg_err_toggle").format(e=e))
-
-    # --- GESTIÓN DE ENV ---
-    def load_env_dict(self):
-        env = {}
-        path = os.path.join(SETTINGS_DIR, ".env")
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                for line in f:
-                    if "=" in line:
-                        k, v = line.strip().split("=", 1)
-                        env[k] = v
-        return env
-
-    def update_env_key(self, key, value):
-        """Actualiza una clave en el archivo .env conservando el resto."""
-        path = os.path.join(SETTINGS_DIR, ".env")
-        lines = []
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-        
-        new_lines = []
-        found = False
-        for line in lines:
-            if line.strip().startswith(f"{key}="):
-                new_lines.append(f"{key}={value}\n")
-                found = True
-            else:
-                new_lines.append(line)
-        
-        # Asegurar que la línea anterior tenga salto de línea antes de agregar una nueva
-        if new_lines and not new_lines[-1].endswith("\n"):
-            new_lines[-1] += "\n"
-            
-        if not found:
-            new_lines.append(f"{key}={value}\n")
-            
-        with open(path, "w", encoding="utf-8") as f:
-            f.writelines(new_lines)
-
-    def save_env(self):
-        path = os.path.join(SETTINGS_DIR, ".env")
-        try:
-            # Guardamos usando update_env_key para no borrar otras configs
-            for k, v in self.env_entries.items():
-                self.update_env_key(k, v.get().strip())
-            self.lbl_status_cred.configure(text=self.lang_manager.get("msg_saved_success"), text_color=self.theme_manager.get("green"))
-            self.after(3000, lambda: self.lbl_status_cred.configure(text=""))
-        except Exception as e:
-            self.lbl_status_cred.configure(text=self.lang_manager.get("msg_err_generic").format(e=str(e)), text_color=self.theme_manager.get("red"))
 
     def on_closing(self):
         if self.bot_process:

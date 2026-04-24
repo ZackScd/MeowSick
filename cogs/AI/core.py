@@ -138,11 +138,11 @@ class AICore(commands.Cog):
         while True:
             try:
                 message, is_direct = await self.chat_queue.get()
-                print(f"⚙️ [WORKER-{id(self)}] Procesando ID: {message.id} | Tamaño de cola: {self.chat_queue.qsize()}")
+                print(self.bot.lang.get("sys_ai_core_worker_proc").format(wid=id(self), mid=message.id, qsize=self.chat_queue.qsize()))
                 await self._process_message_task(message, is_direct)
                 self.chat_queue.task_done()
             except asyncio.CancelledError: break
-            except Exception as e: print(f"🧠 ❌ [CHAT WORKER] Error crítico: {e}")
+            except Exception as e: print(self.bot.lang.get("sys_ai_core_chat_err").format(e=e))
             
     async def _audio_worker(self):
         """Worker aislado para la pipeline STT/TTS previniendo bloqueos del VoiceClient."""
@@ -152,7 +152,7 @@ class AICore(commands.Cog):
                 await self._process_audio_task(interaction, audio_path, view)
                 self.audio_queue.task_done()
             except asyncio.CancelledError: break
-            except Exception as e: print(f"🧠 ❌ [AUDIO WORKER] Error crítico: {e}")
+            except Exception as e: print(self.bot.lang.get("sys_ai_core_audio_err").format(e=e))
 
     def _get_config(self):
         """Lee el archivo JSON de configuración y extrae específicamente el bloque de ajustes de IA."""
@@ -250,7 +250,7 @@ class AICore(commands.Cog):
         except ImportError: edge_tts = None
             
         if not edge_tts:
-            print("🧠 ⚠️ [TTS] Falta librería. Ejecuta en tu terminal: pip install edge-tts")
+            print(self.bot.lang.get("sys_ai_core_tts_no_lib"))
             return
 
         # Limpiar texto de emojis, URLs y formato markdown para que la IA suene natural
@@ -274,7 +274,7 @@ class AICore(commands.Cog):
         
         # --- RVC FILTER (CLONACIÓN DE VOZ) ---
         if self._get_config().get("tts_rvc", False):
-            print("🧠 🎙️ [RVC] Filtro de clonación de voz activado. (Pipeline en tiempo real pendiente de GPU)")
+            print(self.bot.lang.get("sys_ai_core_rvc_on"))
             # En el futuro, aquí se pasaría el 'tts_file' a través del modelo PyTorch local.
 
         # --- MOTOR LOCAL (PIPER TTS) ---
@@ -284,7 +284,7 @@ class AICore(commands.Cog):
             voice_model = self._get_config().get("tts_voice", "es_MX-dalia-medium.onnx")
             model_path = os.path.join(base_dir, "res", "piper", "voices", voice_model)
             
-            print(f"🧠 🎙️ [TTS LOCAL] Generando audio (Piper: {voice_model})...")
+            print(self.bot.lang.get("sys_ai_core_tts_loc_gen").format(model=voice_model))
             try:
                 if not os.path.exists(piper_exe) or not os.path.exists(model_path):
                     raise Exception("Binario de Piper o Modelo ONNX no encontrados.")
@@ -294,26 +294,26 @@ class AICore(commands.Cog):
                 )
                 await process.communicate(input=clean_text.encode('utf-8'))
             except Exception as e:
-                print(f"🧠 ⚠️ [TTS LOCAL] Error con Piper: {e}. Cayendo a Edge-TTS (Nube)...")
+                print(self.bot.lang.get("sys_ai_core_tts_loc_err").format(e=e))
                 tts_engine = "nube_edge" # Fallback automático
                 
         # --- MOTOR NUBE (EDGE-TTS) ---
         if tts_engine == "nube_edge":
             tts_file = os.path.join(downloads_dir, f"tts_ia_{guild.id}.mp3")
             voice_model = self._get_config().get("tts_voice", "es-MX-DaliaNeural")
-            print(f"🧠 🎙️ [TTS NUBE] Generando audio ({voice_model})...")
+            print(self.bot.lang.get("sys_ai_core_tts_cld_gen").format(model=voice_model))
             try:
                 communicate = edge_tts.Communicate(clean_text, voice_model)
                 await communicate.save(tts_file)
             except Exception as e:
-                print(f"🧠 ❌ [TTS NUBE] Error al generar MP3: {e}")
+                print(self.bot.lang.get("sys_ai_core_tts_cld_err").format(e=e))
                 return
             
         if not os.path.exists(ffmpeg_exe): return
 
         # --- Resolución de Conflictos ---
         if vc.is_playing() or vc.is_paused():
-            print("🧠 ⚠️ [TTS] Música detectada. Omitiendo lectura en voz alta para evitar colisión de streams.")
+            print(self.bot.lang.get("sys_ai_core_tts_skip_mus"))
             return
 
         # Función callback para limpiar la basura tras hablar
@@ -328,7 +328,7 @@ class AICore(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         """Oyente global: Se dispara cada vez que CUALQUIER usuario envía un mensaje en Discord."""
-        print(f"🔥 ON_MESSAGE: {message.id}")
+        print(self.bot.lang.get("sys_ai_core_on_msg").format(mid=message.id))
         
         # 1. Filtros de Entrada (Canal, Bots, etc.)
         if not self._check_filters(message): return # Si no pasa los filtros, corta la función aquí mismo
@@ -384,12 +384,12 @@ class AICore(commands.Cog):
             if now - last < 3.0: return # Cooldown estricto de 3s para evadir saturación
             
             self.last_response_time[message.channel.id] = now
-            print(f"📥 DISPATCH: {message.id}")
+            print(self.bot.lang.get("sys_ai_core_dispatch").format(mid=message.id))
             await self.chat_queue.put((message, is_direct)) # Despachar al Worker en lugar de congelar
 
     async def _process_message_task(self, message, is_direct):
         """Cuerpo de procesamiento real extraído del event loop principal."""
-        print(f"⚙️ PROCESS: {message.id}")
+        print(self.bot.lang.get("sys_ai_core_process").format(mid=message.id))
         config = self._get_config()
         gamer_mode = config.get("gamer_mode", False)
         
@@ -464,11 +464,11 @@ class AICore(commands.Cog):
                             
                             b64_str = base64.b64encode(optimized_bytes).decode('utf-8')
                             image_data = ("image/jpeg", b64_str)
-                            print(f"🧠 👁️ [AI] Imagen optimizada (VRAM Safe): {target_attachment.filename}")
+                            print(self.bot.lang.get("sys_ai_core_img_opt").format(file=target_attachment.filename))
                         except Exception as e:
-                            print(f"🧠 ⚠️ [AI] Error leyendo imagen contextual: {e}")
+                            print(self.bot.lang.get("sys_ai_core_img_err").format(e=e))
                     else:
-                        print(f"🧠 ⚠️ [AI] Imagen ignorada: {target_attachment.filename} excede el límite de {limit_mb}MB.")
+                        print(self.bot.lang.get("sys_ai_core_img_ign").format(file=target_attachment.filename, limit=limit_mb))
 
             # Evaluar si la IA tiene permitido buscar autónomamente
             enable_web = self._get_config().get("enable_web_search", True)
@@ -500,7 +500,7 @@ class AICore(commands.Cog):
                     if w1 == w2 and len(w1) > 0: # Si son exactamente iguales (Ej: "Ugh. ¿En")
                         response = lines[0] # Cortamos de tajo y nos quedamos solo con la primera
 
-                print(f"📤 SEND: {message.id}")
+                print(self.bot.lang.get("sys_ai_core_send").format(mid=message.id))
 
                 is_tts_active = hasattr(self, 'active_tts') and message.guild.id in self.active_tts and self._get_config().get("enable_tts", True)
                 send_text = self._get_config().get("tts_send_text", True) if is_tts_active else True
@@ -525,7 +525,7 @@ class AICore(commands.Cog):
                 if is_tts_active:
                     await self._speak_response(message.guild, response)
             else:
-                print("🧠 ⚠️ [AI] El modelo no devolvió ninguna respuesta (Posible error de API o bloqueo de seguridad).") # Alerta crítica en consola
+                print(self.bot.lang.get("sys_ai_core_no_resp")) # Alerta crítica en consola
 
     async def process_audio_input(self, interaction, audio_path, view):
         """Despacha la solicitud de audio a la cola de trabajadores sin trabar el VoiceClient."""
@@ -554,7 +554,7 @@ class AICore(commands.Cog):
                 except ImportError: WhisperModel = None
                 
                 if not WhisperModel: raise Exception("Librería faster-whisper no instalada.")
-                print("🧠 🎙️ [STT LOCAL] Transcribiendo audio con faster-whisper...")
+                print(self.bot.lang.get("sys_ai_core_stt_loc"))
                 def transcribe():
                     model = WhisperModel("tiny", device="cpu", compute_type="int8")
                     segs, _ = model.transcribe(audio_path, beam_size=5)
@@ -712,11 +712,11 @@ class AICore(commands.Cog):
                 if not DDGS:
                     return await ctx.send("⚠️ Falta librería DDGS. Ejecuta en terminal: `pip install duckduckgo-search`")
                 try:
-                    print(f"🧠 🌐 [WEB] Buscando en DDG: {query}")
+                    print(self.bot.lang.get("sys_ai_core_web_ddg").format(query=query))
                     results = await self.bot.loop.run_in_executor(None, lambda: list(DDGS().text(query, max_results=max_res)))
                     if not results: raise Exception("Sin resultados o API bloqueada.")
                 except Exception as e:
-                    print(f"🧠 ⚠️ [WEB] Error DDG ({e}). Iniciando Cascada de Resiliencia (Scraping)...")
+                    print(self.bot.lang.get("sys_ai_core_web_ddg_err").format(e=e))
                     # --- FALLBACK A SCRAPING HTML PURO ---
                     results = []
                     try: from bs4 import BeautifulSoup
@@ -732,7 +732,7 @@ class AICore(commands.Cog):
                                         for a in soup.find_all('a', class_='result__snippet')[:max_res]:
                                             results.append({"title": a.text, "body": a.parent.text})
                     except Exception as fallback_err:
-                        print(f"🧠 ❌ [WEB] Fallback también fracasó: {fallback_err}")
+                        print(self.bot.lang.get("sys_ai_core_web_fall_err").format(e=fallback_err))
 
                 if results:
                     context_str = "\n".join([f"- {r.get('title', '')}: {r.get('body', '')}" for r in results])
@@ -740,7 +740,7 @@ class AICore(commands.Cog):
                 else:
                     user_input += f"\n\n[NOTA DEL SISTEMA]: La búsqueda web falló por bloqueos de red. Pide disculpas y responde lo que sepas."
             else:
-                print(f"🧠 🌐 [WEB] Usando Google Search Grounding: {query}")
+                print(self.bot.lang.get("sys_ai_core_web_ggl").format(query=query))
                 use_grounding = True # Google se encarga de todo por su cuenta
 
             response = await ai_manager.generate_content("chat", user_input, system_instruction=sys_instruction, use_grounding=use_grounding)

@@ -3,6 +3,7 @@ import aiohttp # Librería para hacer peticiones web asíncronas sin bloquear el
 import json
 import asyncio
 import sys
+from shared.language_manager import LanguageManager
 from shared.config_manager import ConfigManager
 
 class AIManager:
@@ -24,6 +25,11 @@ class AIManager:
         # ══════════════════════════════════════════════════════════════════
         self._api_keys_cache = None  # Cache interno; None = "todavía no leído"
         self.current_key_index = 0   # Puntero de rotación Round-Robin
+        
+        if getattr(sys, 'frozen', False):
+            self.settings_dir = os.path.join(os.path.dirname(sys.executable), "settings")
+        else:
+            self.settings_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "settings")
 
         # Jerarquía de Modelos (Cascada de Inteligencia)
         # Nombres corregidos — los originales (gemini-3-flash-preview, gemini-flash-latest)
@@ -44,6 +50,14 @@ class AIManager:
         self.local_tools_supported = True  # Bandera: False si Ollama reportó que el modelo no soporta tools
 
     @property
+    def lang(self):
+        lang_code = self._get_config().get("language", "es")
+        if not hasattr(self, '_lang_cache') or getattr(self, '_lang_code_cache', None) != lang_code:
+            self._lang_code_cache = lang_code
+            self._lang_cache = LanguageManager(os.path.join(self.settings_dir, "locales"), lang_code)
+        return self._lang_cache
+
+    @property
     def api_keys(self):
         """
         Propiedad lazy — lee las keys en el momento de usarlas, nunca al instanciar.
@@ -60,9 +74,9 @@ class AIManager:
             self.current_key_index = 0
             if keys:
                 masked = keys[0][:5] + "..." + keys[0][-4:] if len(keys[0]) > 10 else "CORTA"
-                print(f"🧠 🔑 [AI UTILS] {len(keys)} key(s) cargada(s). Activa: {masked}")
+                print(self.lang.get("sys_ai_utl_keys_load").format(count=len(keys), key=masked))
             else:
-                print("🧠 ❌ [AI UTILS] No se encontró GEMINI_API_KEY. Verifica tu archivo .env")
+                print(self.lang.get("sys_ai_utl_no_key"))
         return self._api_keys_cache
 
     def get_current_key(self):
@@ -79,7 +93,7 @@ class AIManager:
         keys = self.api_keys
         if len(keys) > 1:
             self.current_key_index = (self.current_key_index + 1) % len(keys)
-            print(f"🧠 🔄 [AI UTILS] Rotando a API Key #{self.current_key_index}")
+            print(self.lang.get("sys_ai_utl_rot_key").format(idx=self.current_key_index))
             return True
         return False  # Solo hay 1 llave, no se puede rotar
 
@@ -117,7 +131,7 @@ class AIManager:
             if results:
                 results_str = "\n".join([f"- {r.get('title', '')}: {r.get('body', '')}" for r in results])
         except Exception as e:
-            print(f"🧠 ⚠️ [WEB TOOL] Error DDG: {e}. Iniciando Scraping de Resiliencia...")
+            print(self.lang.get("sys_ai_utl_web_ddg_err").format(e=e))
             try:
                 from bs4 import BeautifulSoup
                 async with aiohttp.ClientSession() as session:
@@ -129,7 +143,7 @@ class AIManager:
                                 results.append(f"- {a.parent.text}")
                             results_str = "\n".join(results)
             except Exception as e2:
-                print(f"🧠 ❌ [WEB TOOL] Scraping también falló: {e2}")
+                print(self.lang.get("sys_ai_utl_web_scr_err").format(e=e2))
                 
         if results_str:
             return f"[RESULTADOS DE BÚSQUEDA WEB PARA '{query}']\n{results_str}\n\nUtiliza estos datos para responder al usuario de forma natural."
@@ -145,7 +159,7 @@ class AIManager:
             vision_models = ["llava", "llava-llama3", "moondream", "bakllava", "minicpm-v", "gemma3"]
             is_vision_model = any(v in model.lower() for v in vision_models)
             if not is_vision_model:
-                print(f"🧠 ⚠️ [OLLAMA VISION] El modelo '{model}' probablemente NO soporta imágenes. Considera usar 'llava' o 'gemma3' en la config.")
+                print(self.lang.get("sys_ai_utl_oll_vis_warn").format(model=model))
         
         messages = []
         if system_instruction:
@@ -203,7 +217,7 @@ class AIManager:
                             tool_call = msg_resp["tool_calls"][0]
                             if tool_call["function"]["name"] == "search_web":
                                 query = tool_call["function"]["arguments"].get("query", "")
-                                print(f"🧠 🌐 [OLLAMA TOOLS] Gemma decidió buscar en internet: '{query}'")
+                                print(self.lang.get("sys_ai_utl_oll_tool").format(query=query))
                                 
                                 search_results = await self._perform_web_search(query)
                                 
@@ -223,7 +237,7 @@ class AIManager:
                         err = await response.text()
                         if response.status == 400 and "does not support tools" in err:
                             if self.local_tools_supported:
-                                print(f"🧠 ⚠️ [OLLAMA] El modelo '{model}' no soporta herramientas. Desactivando búsqueda autónoma local...")
+                                print(self.lang.get("sys_ai_utl_oll_no_tool").format(model=model))
                                 self.local_tools_supported = False
                             if "tools" in payload:
                                 del payload["tools"]
@@ -233,12 +247,12 @@ class AIManager:
                                     return data_fallback.get("message", {}).get("content")
                                 else:
                                     err_fb = await response_fallback.text()
-                                    print(f"🧠 ⚠️ [OLLAMA] Error {response_fallback.status} en reintento: {err_fb[:100]}")
+                                    print(self.lang.get("sys_ai_utl_oll_err_fb").format(status=response_fallback.status, err=err_fb[:100]))
                                     return None
-                        print(f"🧠 ⚠️ [OLLAMA] Error {response.status}: {err[:100]}")
+                        print(self.lang.get("sys_ai_utl_oll_err").format(status=response.status, err=err[:100]))
                         return None
         except Exception as e:
-            print(f"🧠 ❌ [OLLAMA] Servidor local inalcanzable. ¿Ollama está abierto? Error: {e}")
+            print(self.lang.get("sys_ai_utl_oll_down").format(e=e))
             return None
 
     async def generate_content(self, model_type, prompt, temperature=0.7, max_tokens=1000, system_instruction=None, media_data=None, use_grounding=False):
@@ -259,7 +273,7 @@ class AIManager:
                 search_query = prompt.split("[NUEVO MENSAJE")[-1].replace("[TU RESPUESTA]:", "").strip()
                 if not search_query or len(search_query) < 3:
                     search_query = prompt[-200:].strip() # Fallback: usar el final del prompt
-                print(f"🧠 🌐 [LOCAL-WEB] Inyectando búsqueda preventiva: '{search_query[:60]}'")
+                print(self.lang.get("sys_ai_utl_loc_inj").format(query=search_query[:60]))
                 web_context = await self._perform_web_search(search_query)
                 prompt = f"{web_context}\n\n---\n\n{prompt}"
                 use_grounding = False # Ya está inyectado, no enviar tools a Ollama
@@ -268,9 +282,9 @@ class AIManager:
             if local_resp:
                 return local_resp
             if not config.get("ollama_fallback", False):
-                print("🧠 ❌ [ROUTER] Falló la IA Local y el Fallback a la Nube está desactivado.")
+                print(self.lang.get("sys_ai_utl_rout_fail"))
                 return None
-            print("🧠 ⚠️ [ROUTER] Falló la IA Local. Aplicando Fallback de emergencia a Nube (Google Gemini)...")
+            print(self.lang.get("sys_ai_utl_rout_fall"))
 
         # --- 2. RUTA NUBE (GOOGLE GEMINI) ---
         parts = [{"text": prompt}] # El texto principal de la petición
@@ -337,17 +351,17 @@ class AIManager:
                                     modelo_exitoso = True # Marca la victoria
                                     return texto # Devuelve el texto y rompe todos los bucles
                                 except (KeyError, IndexError, TypeError): # Si el árbol JSON vino deforme...
-                                    print(f"🧠 ⚠️ [AI] Respuesta vacía o bloqueada por seguridad. Detalles: {data}") # Log de la estructura rota
+                                    print(self.lang.get("sys_ai_utl_ai_empty").format(data=data)) # Log de la estructura rota
                                     return None # Aborta
                             
                             elif response.status == 429: # Código HTTP 429 = "Too Many Requests" (Agotaste tus mensajes por minuto)
-                                print(f"🧠 ⚠️ [AI] Cuota excedida (429) en {modelo_actual}.") # Log
+                                print(self.lang.get("sys_ai_utl_ai_429").format(model=modelo_actual)) # Log
                                 self.rotate_key() # Invoca el cambio de llave (Saca la API_KEY_2)
-                                print(f"🧠 🔁 [AI] Reintentando el modelo {modelo_actual} con la nueva llave API...")
+                                print(self.lang.get("sys_ai_utl_ai_retry").format(model=modelo_actual))
                                 continue # Reinicia el "Bucle 2" forzando el reintento del mismo modelo pero con la nueva llave
                             
                             elif response.status == 503: # Código HTTP 503 = Servidores de Google colapsados
-                                print(f"🧠 ⚠️ [AI] El modelo {modelo_actual} está saturado en Google (503). Intentando con otro modelo...")
+                                print(self.lang.get("sys_ai_utl_ai_503").format(model=modelo_actual))
                                 break # Rompe el Bucle de Llaves (cambiar llave no sirve) y pasa al siguiente modelo (Bucle 1).
                             
                             else: # Cualquier otro error HTTP (500 Server Error, 404 Not Found, 400 Bad Request)
@@ -355,19 +369,19 @@ class AIManager:
                                 # Diagnóstico específico: Si el usuario puso mal la llave en el Launcher
                                 if response.status == 400 and "API key not valid" in err: 
                                     masked = current_key[:5] + "..." + current_key[-4:] if len(current_key) > 10 else "INVALID" # Censura la llave por privacidad
-                                    print(f"🧠 ❌ [AI] LLAVE INVÁLIDA (400): La llave '{masked}' fue rechazada.") # Alerta humana
+                                    print(self.lang.get("sys_ai_utl_ai_400").format(key=masked)) # Alerta humana
                                 else:
-                                    print(f"🧠 ⚠️ [AI] Error API {response.status}: {err[:100]}") # Alerta técnica truncada
+                                    print(self.lang.get("sys_ai_utl_ai_err").format(status=response.status, err=err[:100])) # Alerta técnica truncada
                                 break # Error fatal e irrecuperable de este modelo. Rompe el Bucle de Llaves y pasa al siguiente modelo (Bucle 1).
                                 
                     except Exception as e: # Si no hay internet o el servidor de Google está completamente caído
-                        print(f"🧠 ❌ [AI] Error de conexión: {e}") 
+                        print(self.lang.get("sys_ai_utl_ai_conn").format(e=e)) 
                         break # Salta al siguiente modelo
                 
                 # --- PENALIZACIÓN DE MODELOS ---
                 # Si recorrimos todas las llaves y el modelo actual nunca pudo responder (por colapso total de cuotas)...
                 if not modelo_exitoso and model_type == "chat" and modelo_actual in self.CHAT_HIERARCHY: 
-                    print(f"🧠 📉 [AI] El modelo {modelo_actual} se agotó. Se ignorará temporalmente para agilizar respuestas.") # Log
+                    print(self.lang.get("sys_ai_utl_ai_drop").format(model=modelo_actual)) # Log
                     self.CHAT_HIERARCHY.remove(modelo_actual) # ¡Lo borramos de la lista! Así, el siguiente mensaje en Discord pasará directo al Tier 2 sin perder 3 segundos esperando al Tier 1 roto.
                     
         return None # Si todos los modelos y todas las llaves fallaron, la IA queda en silencio y retorna Nada.

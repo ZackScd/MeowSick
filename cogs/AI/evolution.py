@@ -55,7 +55,7 @@ class Evolution(commands.Cog):
                 await self.process_mood_analysis()
                 self.mood_queue.task_done()
             except asyncio.CancelledError: break
-            except Exception as e: print(f"🧠 ❌ [EVO WORKER] Error: {e}")
+            except Exception as e: print(self.bot.lang.get("sys_ai_evo_work_err").format(e=e))
 
     def _ensure_files(self):
         """Crea las estructuras JSON por defecto si los archivos de estado no existen."""
@@ -99,7 +99,7 @@ class Evolution(commands.Cog):
         messages = list(self.mood_buffer)
         self.mood_buffer = []
         
-        print("🧠 [EVOLUTION] Analizando estado de ánimo...")
+        print(self.bot.lang.get("sys_ai_evo_proc"))
         
         # Recopilación de contexto psicológico
         current_mood = self.get_current_mood() # Cómo nos sentimos ahora
@@ -157,9 +157,9 @@ class Evolution(commands.Cog):
                     # Guarda el historial actualizado
                     ConfigManager.save_json(self.history_file, full_hist, use_lock=False)
                         
-                    print(f"🧠 ✨ [EVOLUTION] Estado actualizado: {new_mood}")
+                    print(self.bot.lang.get("sys_ai_evo_upd").format(mood=new_mood))
             except Exception as e:
-                print(f"🧠 ❌ [EVOLUTION] Error parseando JSON: {e}") # Captura errores si la IA respondió basura en lugar de JSON
+                print(self.bot.lang.get("sys_ai_evo_err_json").format(e=e)) # Captura errores si la IA respondió basura en lugar de JSON
 
     def add_to_buffer(self, msg_content):
         """
@@ -185,7 +185,7 @@ class Evolution(commands.Cog):
         if (now - self.last_activity).total_seconds() > decay_seconds:
             current_mood = self.get_current_mood()
             if not current_mood.startswith("Neutral"):
-                print(f"🧠 📉 [EVOLUTION] Han pasado {decay_hours} horas sin actividad. El humor vuelve a Neutral.")
+                print(self.bot.lang.get("sys_ai_evo_decay").format(hours=decay_hours))
                 new_mood = "Neutral: Me he calmado tras un largo rato sin interactuar con nadie."
                 
                 ConfigManager.save_json(self.state_file, {"estado_animo": new_mood}, use_lock=False)

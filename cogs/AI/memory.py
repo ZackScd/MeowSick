@@ -50,7 +50,7 @@ class Memory(commands.Cog):
                 await self.process_memory_tasks()
                 self.memory_queue.task_done()
             except asyncio.CancelledError: break
-            except Exception as e: print(f"🧠 ❌ [MEMORY WORKER] Error: {e}")
+            except Exception as e: print(self.bot.lang.get("sys_ai_mem_work_err").format(e=e))
 
     def _ensure_files(self):
         """Garantiza la existencia de los archivos JSON de memoria, creándolos con una estructura vacía si no se encuentran."""
@@ -108,7 +108,7 @@ class Memory(commands.Cog):
         msgs = list(self.memory_buffer) # Crea una copia de los mensajes acumulados.
         self.memory_buffer = [] # Limpia el buffer inmediatamente para seguir acumulando nuevos mensajes.
         
-        print("🧠 💾 [MEMORY] Procesando extracción de datos...")
+        print(self.bot.lang.get("sys_ai_mem_proc"))
         
         # Ejecuta cada tarea de análisis en orden.
         await self._task_update_opinions(msgs)
@@ -201,7 +201,7 @@ class Memory(commands.Cog):
                 
                 if cambios: # Si se añadió al menos un hecho nuevo...
                     self.save_data(self.memoria_file, current_mem) # ...guarda el archivo.
-                    print("🧠 💾 [MEMORY] Hechos actualizados.") # Y lo notifica en consola.
+                    print(self.bot.lang.get("sys_ai_mem_upd")) # Y lo notifica en consola.
             except: pass # Ignora errores.
 
     def add_to_buffer(self, msg_formatted):

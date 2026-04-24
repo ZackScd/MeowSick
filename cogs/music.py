@@ -222,7 +222,7 @@ class Music(commands.Cog):
 
                 if no_playing or no_humans: # Si se cumple CUALQUIERA de las condiciones de abandono...
                     await vc.disconnect() # Desconecta el bot del canal de voz de Discord.
-                    print(f"🎵 [SISTEMA] Auto-desconexión en {guild.name}") # Registra la acción en consola.
+                    print(self.bot.lang.get("sys_mus_auto_dc").format(guild=guild.name)) # Registra la acción en consola.
                     
                     ctx = self.last_contexts.get(guild.id) # Intenta recuperar dónde fue la última interacción de texto.
                     if ctx: await self._send_msg(ctx, "timeout_msg") # Envía el aviso de desconexión al chat de texto.
@@ -259,7 +259,7 @@ class Music(commands.Cog):
                     await ctx.author.voice.channel.connect()
             return True # Conexión establecida.
         except Exception as e:
-            print(f"🎵 [ERROR] Error conectando a voz: {e}") # Log del error crudo.
+            print(self.bot.lang.get("sys_mus_err_vc").format(e=e)) # Log del error crudo.
             await self._send_msg(ctx, "connect_error", error=e) # Aviso formal al usuario.
             return False # Fracaso al intentar conectar.
 
@@ -273,16 +273,16 @@ class Music(commands.Cog):
             # Fix: intenta reconectar si el VoiceClient cayó por lag pero el usuario sigue en el canal
             try:
                 if ctx.author and ctx.author.voice and ctx.author.voice.channel:
-                    print("🎵 ⚠️ [MÚSICA] VoiceClient desconectado. Reconectando automáticamente...")
+                    print(self.bot.lang.get("sys_mus_vc_dc_reconn"))
                     if voice_recv:
                         await ctx.author.voice.channel.connect(cls=voice_recv.VoiceRecvClient)
                     else:
                         await ctx.author.voice.channel.connect()
-                    print("🎵 ✅ [MÚSICA] Reconexión exitosa. Continuando cola...")
+                    print(self.bot.lang.get("sys_mus_reconn_ok"))
                 else:
                     return  # No hay canal al que volver, detener cola limpiamente
             except Exception as e:
-                print(f"🎵 ❌ [MÚSICA] Reconexión fallida: {e}. Deteniendo cola.")
+                print(self.bot.lang.get("sys_mus_reconn_fail").format(e=e))
                 return
 
         queue = self.get_queue(ctx)
@@ -309,7 +309,7 @@ class Music(commands.Cog):
                 loop = self.bot.loop
                 if attempt > 0:
                     wait_time = 2 ** attempt  # 2s, 4s
-                    print(f"🎵 🔄 [MÚSICA] Reintento {attempt}/{MAX_RETRIES-1} para '{song['title']}' (esperando {wait_time}s)...")
+                    print(self.bot.lang.get("sys_mus_retry").format(attempt=attempt, max_retries=MAX_RETRIES-1, title=song['title'], wait=wait_time))
                     await asyncio.sleep(wait_time)
 
                 data = await loop.run_in_executor(
@@ -320,10 +320,10 @@ class Music(commands.Cog):
                 break  # Éxito, salir del bucle de reintentos
             except Exception as e:
                 last_error = e
-                print(f"🎵 ⚠️ [MÚSICA] Error extrayendo '{song['title']}' (intento {attempt+1}/{MAX_RETRIES}): {type(e).__name__}: {str(e)[:80]}")
+                print(self.bot.lang.get("sys_mus_extract_err").format(attempt=attempt+1, max_retries=MAX_RETRIES, title=song['title'], e_type=type(e).__name__, e_msg=str(e)[:80]))
 
         if last_error or not data:
-            print(f"🎵 ❌ [MÚSICA] '{song['title']}' falló todos los reintentos. Saltando...")
+            print(self.bot.lang.get("sys_mus_all_retries_fail").format(title=song['title']))
             await self._send_msg(ctx, "play_error_skip")
             # Fix: usar after(0) en lugar de recursión directa para no apilar coroutines en el call stack
             await asyncio.sleep(0.5)
@@ -337,7 +337,7 @@ class Music(commands.Cog):
             title = data.get('title', song['title'])
             
             if not os.path.exists(FFMPEG_DIR):
-                print(f"🎵 [ERROR] FFmpeg no encontrado en: {FFMPEG_DIR}")
+                print(self.bot.lang.get("sys_mus_no_ffmpeg").format(path=FFMPEG_DIR))
                 await self._send_msg(ctx, "ffmpeg_error")
                 return
 
@@ -345,19 +345,19 @@ class Music(commands.Cog):
             
             def after_play(error):
                 if error:
-                    print(f"🎵 ⚠️ [MÚSICA] Error durante reproducción de '{title}': {error}")
+                    print(self.bot.lang.get("sys_mus_play_err").format(title=title, error=error))
                 # Fix: siempre encolar el siguiente, incluso si hubo error de stream
                 # run_coroutine_threadsafe es thread-safe desde el callback síncrono de discord.py
                 fut = asyncio.run_coroutine_threadsafe(self.play_next(ctx), self.bot.loop)
                 # Capturar excepciones del future para que no queden silenciosas
                 def _handle_fut(f):
                     try: f.result()
-                    except Exception as e: print(f"🎵 ❌ [MÚSICA] Error en after_play future: {e}")
+                    except Exception as e: print(self.bot.lang.get("sys_mus_after_play_err").format(e=e))
                 fut.add_done_callback(_handle_fut)
 
             # Fix: verificar que el VoiceClient siga conectado justo antes de play()
             if not ctx.voice_client or not ctx.voice_client.is_connected():
-                print("🎵 ⚠️ [MÚSICA] VoiceClient perdido justo antes de reproducir. Reencola la canción.")
+                print(self.bot.lang.get("sys_mus_vc_lost_play"))
                 queue.add_next(song)  # Devuelve la canción al frente de la cola
                 await asyncio.sleep(1.0)
                 await self.play_next(ctx)
@@ -365,12 +365,12 @@ class Music(commands.Cog):
 
             ctx.voice_client.play(source, after=after_play)
             await self._send_msg(ctx, "playing_now", title=title)
-            print(f"🎵 [REPRODUCIENDO] {title}")
+            print(self.bot.lang.get("sys_mus_playing_log").format(title=title))
 
         except Exception as e:
             import traceback
             traceback.print_exc()
-            print(f"🎵 ❌ [MÚSICA] Error reproduciendo '{song['title']}': {type(e).__name__} - {str(e)}")
+            print(self.bot.lang.get("sys_mus_play_exc").format(title=song['title'], e_type=type(e).__name__, e_msg=str(e)))
             await self._send_msg(ctx, "play_error_skip")
             await asyncio.sleep(0.5)
             await self.play_next(ctx)
@@ -389,7 +389,7 @@ class Music(commands.Cog):
         async with ctx.typing(): # Pone al bot en estado de "escribiendo..." mientras procesa la búsqueda para dar feedback visual.
             try:
                 loop = self.bot.loop # Consigue el puntero al loop de tareas principal de Python.
-                print(f"🎵 [BUSCANDO] {search}") # Registro crudo de solicitud.
+                print(self.bot.lang.get("sys_mus_search_log").format(search=search)) # Registro crudo de solicitud.
                 
                 # Lógica condicional: Desvío algorítmico para acelerar la extracción de listas de reproducción omitiendo la resolución profunda inicial.
                 if "list=" in search and not search.startswith("ytsearch"):
@@ -434,7 +434,7 @@ class Music(commands.Cog):
                     await self._send_msg(ctx, "added_queue", title=added_song['title']) # Aviso "X fue añadido a la cola".
 
             except Exception as e:
-                print(f"🎵 [ERROR] Error en play: {e}") # Desplome del motor extractor.
+                print(self.bot.lang.get("sys_mus_play_cmd_err").format(e=e)) # Desplome del motor extractor.
                 await self._send_msg(ctx, "search_error") # Aviso "Error de búsqueda" genérico.
 
     @commands.command(name="stop")
@@ -522,7 +522,7 @@ class Music(commands.Cog):
         async with ctx.typing(): # Interfaz "..." interactiva.
             try:
                 loop = self.bot.loop # Intercepta el bucle de eventos nativo de Python para uso en hilos paralelos.
-                print(f"🎵 [BUSCANDO] (Next) {search}") # Inyección simple en consola local para debug visual en PC.
+                print(self.bot.lang.get("sys_mus_search_next_log").format(search=search)) # Inyección simple en consola local para debug visual en PC.
                 
                 info = await loop.run_in_executor(None, lambda: ytdl.extract_info(search, download=False)) # Manda al motor de extracción profunda el texto asíncronamente en bloque de hilo ciego.
                 if 'entries' in info: info = info['entries'][0] # Traga el primer índice caso sea listado o ytsearch nativo por debajo del capó.
@@ -539,7 +539,7 @@ class Music(commands.Cog):
                     await self._send_msg(ctx, "next_added", title=added_song['title']) # Brinda confirmación de inyección agresiva exitosa para calmar la inquietud.
 
             except Exception as e:
-                print(f"🎵 [ERROR] Error en next: {e}") # Log puro y duro del error para ver qué colapsó en yt-dlp.
+                print(self.bot.lang.get("sys_mus_next_cmd_err").format(e=e)) # Log puro y duro del error para ver qué colapsó en yt-dlp.
                 await self._send_msg(ctx, "search_error") # Transmite en canal final el descontento de extracción.
 
     @commands.command(name="playlist")
@@ -568,7 +568,7 @@ class Music(commands.Cog):
         async with ctx.typing(): # Apariencia de pensar...
             try:
                 loop = self.bot.loop # Intercepta el bucle local para meter las garras con el extractor.
-                print(f"🎵 [BUSCANDO] (PLS) {url}") # Log inofensivo.
+                print(self.bot.lang.get("sys_mus_search_pls_log").format(url=url)) # Log inofensivo.
                 
                 # Directiva extract_flat: Optimización crítica para análisis superficial. Obtiene diccionarios minimalistas en vez de resolver datos de codificación masivos.
                 fast_opts = {**YTDL_OPTIONS, 'extract_flat': 'in_playlist'} # Manda la navaja rápida en yt-dlp. Saca nombres e ids pero ignora la URL real M3U8 para no colapsar la RAM de inmediato.
@@ -597,7 +597,7 @@ class Music(commands.Cog):
                 if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused(): # Chequeo profundo de inactividad de instancia.
                     await self.play_next(ctx) # Como el estado del motor era ocioso, lo rompe mandándolo a extraer el índice cero recién forzado.
             except Exception as e:
-                print(f"🎵 [ERROR] Error en pls: {e}") # Documentación local crasheo profundo.
+                print(self.bot.lang.get("sys_mus_pls_cmd_err").format(e=e)) # Documentación local crasheo profundo.
                 await self._send_msg(ctx, "search_error") # Informe formal al gremio discord.
 
     # --- 4.4. OBSERVADORES DE EVENTOS DE SESIÓN (LISTENERS) ---
@@ -619,7 +619,7 @@ class Music(commands.Cog):
             human_count = sum(1 for m in vc.channel.members if not m.bot) # Emite un barrido iterativo evaluando quién de los restantes no tiene tag de BOT.
             
             if human_count == 0: # ¿Resultó en un número nulo de organismos reales vivos dentro?
-                print(f"🎵 [SISTEMA] Bot solo en {member.guild.name}. Timer iniciado.") # Anuncia su soledad existencial en consola de manera formal.
+                print(self.bot.lang.get("sys_mus_bot_alone").format(guild=member.guild.name)) # Anuncia su soledad existencial en consola de manera formal.
                 self._schedule_disconnect(member.guild) # Dispara en segundo plano y asíncronamente el contador destructivo del bot mediante `create_task`.
         
         # Interrupción del disparador: Entrada de humano a canal del VoiceClient
