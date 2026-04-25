@@ -213,7 +213,7 @@ Repetir el Paso 6 metódicamente para las demás pantallas:
   - [x] Crear clase `DashboardFrame`, mover código y adaptarlo al controlador.
   - [x] Aplicar inyección de temas y strings de idioma.
 
-- [ ] **Paso 7: Migrar Vistas Principales**
+- [x] **Paso 7: Migrar Vistas Principales**
   - [x] Crear subcarpetas `views/music/` y `views/config/` con sus `__init__.py`.
   - [x] `views/music/main_view.py`
     - [x] Crear clase y migrar código de `create_music_page`.
@@ -223,7 +223,7 @@ Repetir el Paso 6 metódicamente para las demás pantallas:
     - [x] Crear clase y migrar código de `create_modules_page`.
     - [x] Adaptar referencias y variables al `self.controller`.
     - [x] Actualizar botón en el launcher y borrar método original.
-  - [ ] `views/config/general_view.py`
+  - [x] `views/config/general_view.py`
     - [x] Crear clase y migrar código de `create_config_general_frame`.
     - [x] Adaptar referencias y variables al `self.controller`.
     - [x] Actualizar botón en el launcher y borrar método original.
@@ -235,51 +235,65 @@ Repetir el Paso 6 metódicamente para las demás pantallas:
     - [x] Crear clase y migrar código de `create_config_ai_frame`.
     - [x] Adaptar referencias y variables al `self.controller`.
     - [x] Actualizar botón en el launcher y borrar método original.
-  - [ ] `views/config/ai_settings_view.py`
-    - [ ] Crear clase y migrar código de `create_config_ai_settings_frame`.
-    - [ ] Adaptar referencias y variables al `self.controller`.
-    - [ ] Actualizar botón en el launcher y borrar método original.
-  - [ ] `views/config/ai_engine_view.py`
-    - [ ] Crear clase y migrar código de `create_config_ai_engine_frame`.
-    - [ ] Adaptar referencias y variables al `self.controller`.
-    - [ ] Actualizar botón en el launcher y borrar método original.
-  - [ ] `views/config/ai_presets_view.py` *(nueva)*
-    - [ ] Crear interfaz base y enlazarla al menú lateral.
+  - [x] `views/config/ai_settings_view.py`
+    - [x] Crear clase y migrar código de `create_config_ai_settings_frame`.
+    - [x] Adaptar referencias y variables al `self.controller`.
+    - [x] Actualizar botón en el launcher y borrar método original.
+  - [x] `views/config/ai_engine_view.py`
+    - [x] Crear clase y migrar código de `create_config_ai_engine_frame`.
+    - [x] Adaptar referencias y variables al `self.controller`.
+    - [x] Actualizar botón en el launcher y borrar método original.
+  - [x] `views/config/ai_presets_view.py` *(nueva)*
+    - [x] Crear interfaz base y enlazarla al menú lateral.
   
 - [ ] **Paso 8: Migrar Editores de IA**
   - [ ] Crear subcarpeta `views/ai/` con `__init__.py`.
   - [ ] Reemplazar botones "Guardar" individuales por un botón global unificado por vista.
   - [ ] `views/ai/identity_editor.py`
-    - [ ] Migrar `create_ai_identity_frame`, adaptar controlador y borrar de launcher.
+    - [ ] Crear clase, migrar `create_ai_identity_frame` y adaptar controlador.
+    - [ ] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/ai/moods_editor.py`
-    - [ ] Migrar `create_ai_moods_frame`, adaptar controlador y borrar de launcher.
+    - [ ] Crear clase, migrar `create_ai_moods_frame` y adaptar controlador.
+    - [ ] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/ai/moods_history_editor.py`
-    - [ ] Migrar `create_ai_moods_history_frame`, adaptar controlador y borrar de launcher.
+    - [ ] Crear clase, migrar `create_ai_moods_history_frame` y adaptar controlador.
+    - [ ] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/ai/users_editor.py`
-    - [ ] Migrar `create_ai_users_frame`, unificar botón "Guardar", adaptar controlador y borrar de launcher.
+    - [ ] Crear clase, migrar `create_ai_users_frame`, unificar botón "Guardar" y adaptar controlador.
+    - [ ] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/ai/memory_editor.py`
-    - [ ] Migrar `create_ai_memory_frame`, unificar botón "Guardar", adaptar controlador y borrar de launcher.
+    - [ ] Crear clase, migrar `create_ai_memory_frame`, unificar botón "Guardar" y adaptar controlador.
+    - [ ] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/ai/opinions_editor.py`
-    - [ ] Migrar `create_ai_opinions_frame`, unificar botón "Guardar", adaptar controlador y borrar de launcher.
+    - [ ] Crear clase, migrar `create_ai_opinions_frame`, unificar botón "Guardar" y adaptar controlador.
+    - [ ] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/ai/ranges_editor.py`
-    - [ ] Migrar `create_ai_ranges_frame`, unificar botón "Guardar", adaptar controlador y borrar de launcher.
+    - [ ] Crear clase, migrar `create_ai_ranges_frame`, unificar botón "Guardar" y adaptar controlador.
+    - [ ] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/ai/self_editor.py`
-    - [ ] Migrar `create_ai_self_frame`, unificar botón "Guardar", adaptar controlador y borrar de launcher.
+    - [ ] Crear clase, migrar `create_ai_self_frame`, unificar botón "Guardar" y adaptar controlador.
+    - [ ] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/ai/prompts_editor.py`
-    - [ ] Migrar `create_ai_prompts_frame`, adaptar controlador y borrar de launcher.
+    - [ ] Crear clase, migrar `create_ai_prompts_frame` y adaptar controlador.
+    - [ ] Actualizar botón en el launcher y borrar método original.
 
 - [ ] **Paso 9: Migrar Guías**
   - [ ] Crear subcarpeta `views/guides/` con `__init__.py`.
   - [ ] `views/guides/discord_guide_view.py`
-    - [ ] Migrar `create_discord_guide_frame`, adaptar controlador y borrar de launcher.
+    - [ ] Crear clase, migrar `create_discord_guide_frame` y adaptar controlador.
+    - [ ] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/guides/google_guide_view.py`
-    - [ ] Migrar `create_google_guide_frame`, adaptar controlador y borrar de launcher.
+    - [ ] Crear clase, migrar `create_google_guide_frame` y adaptar controlador.
+    - [ ] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/guides/id_guide_view.py`
-    - [ ] Migrar `create_id_guide_frame`, adaptar controlador y borrar de launcher.
+    - [ ] Crear clase, migrar `create_id_guide_frame` y adaptar controlador.
+    - [ ] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/guides/privacy_guide_view.py`
-    - [ ] Migrar `create_privacy_guide_frame`, adaptar controlador y borrar de launcher.
+    - [ ] Crear clase, migrar `create_privacy_guide_frame` y adaptar controlador.
+    - [ ] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/guides/local_guide_view.py`
-    - [ ] Migrar `create_local_guide_frame`, adaptar controlador y borrar de launcher.
+    - [ ] Crear clase, migrar `create_local_guide_frame` y adaptar controlador.
+    - [ ] Actualizar botón en el launcher y borrar método original.
 
 - [ ] **Tarea de Usabilidad: Reorganizar Menú de Configuración de IA**
   - [ ] Eliminar botón "🤖 Motores de IA" del menú de configuración general.
