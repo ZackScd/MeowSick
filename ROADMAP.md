@@ -132,119 +132,6 @@ MeowSick/
 
 > **⚠️ Importante**: El orden de ejecución es vital. Primero construiremos los cimientos centrales (Gestores de Configuración, Tema e Idioma). De esta forma, al momento de extraer las vistas a nuevos archivos, ya insertaremos el código limpio usando estos gestores, evitando tener que re-editar decenas de archivos en el futuro.
 
----
-
-### Fase 1: Cimientos y Resolución de Deuda Técnica (Core)
-
-#### Paso 1: Centralización del Gestor de Estado (D.R.Y)
-
-**Problema confirmado:** Las funciones `_get_config()` / `_load_json()` / `save_data()` están duplicadas en **seis archivos**: `launcher.py`, `meowSick.py`, `music.py`, `memory.py`, `evolution.py` y `utils.py`. Cualquier cambio en la lógica de persistencia debe replicarse manualmente en todos ellos.
-
-1. Crear el módulo `shared/config_manager.py` con métodos seguros `load_json(path)` y `save_json(path, data)`.
-2. **Estrategia de bloqueo diferenciada:**
-   - Para `config.json` y `outputs.json` (escritos tanto por el Launcher como por el Bot): usar `filelock` con un timeout bajo (ej. `timeout=1.0`) para bloqueo real multi-proceso. Si el lock no se obtiene, reintentar o loguear el conflicto en lugar de fallar silenciosamente.
-   - Para los archivos de memoria de la IA (`memoria.json`, `opiniones.json`, `autoconcepto.json`, `estado_animo.json`, `historial_estados.json`): **NO envolver con `filelock` desde el Launcher**. Estos archivos ya están protegidos por el worker pattern de `asyncio.Queue` dentro del bot (`_memory_worker`, `_evolution_worker`). Añadir `filelock` encima introduciría riesgo de deadlock si el worker sostiene el lock en el momento en que el Launcher intenta acceder. La UI del Launcher solo debe leer estos archivos, nunca escribirlos mientras el bot esté activo.
-3. Reemplazar todas las funciones locales duplicadas en los seis archivos por llamadas a `shared/config_manager.py`.
-
-> **⚠️ Nota sobre el Singleton `AIManager`:** `utils.py` exporta `ai_manager = AIManager()` como Singleton global. Al recargar un Cog (`CMD_RELOAD`), si el módulo no se reimporta completamente, el Singleton puede retener el estado de keys anterior. Esto está parcialmente mitigado por la `@property` lazy de `api_keys`, pero al migrar al `ConfigManager` asegurarse de que `_get_config()` dentro de `AIManager` sea reemplazado por `config_manager.load_json()` **sin cachear el resultado**, para que siempre refleje el archivo en disco.
-
-#### Paso 2: Extracción de Temas y Estilos Visuales
-
-El diccionario `COLORS` está fuertemente acoplado dentro de `launcher.py`.
-
-1. Crear la carpeta `themes/` y un archivo `dark.json` que contenga la paleta de colores actual.
-2. Crear la clase `ThemeManager` en `shared/theme_manager.py` que lea este archivo y provea los colores de forma dinámica.
-
-#### Paso 3: Sistema Base de Idiomas (i18n)
-
-1. Crear la carpeta `settings/locales/` y el archivo base `es.json` (Español) con todos los strings de la UI extraídos del código actual.
-2. Crear la clase `LanguageManager` en `shared/language_manager.py` que cargue el JSON del idioma configurado en `config.json` y provea un método `get(key)` para inyectar los strings.
-3. **Internacionalización del Bot (`outputs.json`)**: Migrar `outputs.json` a `settings/locales/outputs_es.json` y `outputs_en.json`. Ajustar el Launcher y los Cogs (`music.py`) para leer/escribir en el archivo que corresponda al idioma activo.
-4. **Idioma de la IA**: Inyectar una variable de idioma (ej. "Responde en Español") dinámicamente en los System Prompts (`core.py`, `memory.py`) para que el ecosistema cognitivo respete la configuración local y procese sus pensamientos en el idioma correcto.
-5. **Internacionalización de Consolas (Logs y Prints)**: Estandarizar todos los mensajes de consola (`print()` y futuros `logger`) emitidos por el bot (`meowSick.py`, `music.py`, `core.py`, etc.) para que utilicen el sistema de idiomas, garantizando que el registro del sistema coincida con el idioma configurado.
-
-#### Paso 4: Estandarización de Variables de Entorno (`.env`)
-
-1. Eliminar las funciones manuales destructivas `load_env_dict` y `update_env_key` de `launcher.py`.
-2. Adoptar la librería `python-dotenv` como método oficial: `dotenv.load_dotenv()` para leer y `dotenv.set_key()` para escribir credenciales de forma segura y no destructiva.
-
-#### Checklist de Progreso - Fase 1
-
-- [x] **Paso 1: Centralización del Gestor de Estado (`shared/config_manager.py`)**
-  - [x] Crear carpeta `shared/` y módulo `config_manager.py`.
-  - [x] Implementar `load_json` y `save_json` seguros.
-  - [x] Aplicar `filelock` con timeout solo para archivos de configuración compartidos (`config.json`, `outputs.json`). No aplicar a los archivos de memoria de la IA (ya protegidos por el worker pattern del bot).
-  - [x] Reemplazar llamadas locales restantes en submódulos de Discord (Cogs):
-    - [x] `cogs/AI/core.py` (Métodos: `_get_config` y lectura de `prefix` en `on_message`).
-    - [x] `cogs/AI/memory.py` (Métodos: `_ensure_files`, `_get_config`, `_load_prompt`).
-    - [x] `cogs/AI/evolution.py` (Lectura/escritura de JSONs de estados de ánimo).
-    - [x] `cogs/AI/identity.py` (Lectura/escritura de `known_users.json`).
-  - [x] **Paso 1.1: Refactorización de JSON en `launcher.py`** (Subdividido para evitar congelamientos):
-    - [x] Bloque 1: Módulos (`update_module_state`, `toggle_module`).
-    - [x] Bloque 2: Amnesia Selectiva (`open_amnesia_dialog`).
-    - [x] Bloque 3: Estados de Ánimo (`load_moods`, `save_current_mood`, `save_possible_moods`).
-    - [x] Bloque 4: Historial de Estados (`load_history`, `clear_history`).
-    - [x] Bloque 5: Usuarios (`load_users`, `save_users`, `delete_user_record`).
-    - [x] Bloque 6: Memoria de Hechos (`load_memory`, `save_single_fact`, `delete_single_fact`, `add_new_fact_ui`).
-    - [x] Bloque 7: Opiniones (`load_opinions`, `save_single_opinion`, `delete_single_opinion`).
-    - [x] Bloque 8: Rangos de Afinidad (`load_ranges`, `save_ranges`).
-    - [x] Bloque 9: Autoconcepto (`load_self`, `save_self`).
-    - [x] Bloque 10: Prompts (`load_prompts`, `save_prompts`).
-  - [x] Verificar que `_get_config()` en `AIManager` (Singleton) no cachee el resultado para que el hot-reload de Cogs funcione correctamente.
-
-- [x] **Paso 2: Extracción de Temas y Estilos Visuales (`themes/dark.json`)**
-  - [x] Crear carpeta `themes/` y archivo `dark.json` con la paleta de colores.
-  - [x] Crear clase `ThemeManager` en `shared/theme_manager.py`.
-  - [x] **Paso 2.1: Plan de Migración de Colores en `launcher.py`** (Documentación para refactorización futura)
-    - [x] Bloque 1: Ventana Principal y Sidebar (Métodos: `__init__`, `create_sidebar`, `render_*_sidebar`).
-    - [x] Bloque 2: Dashboard (Método: `create_dashboard`).
-    - [x] Bloque 3: Páginas de Módulos (Métodos: `create_music_page`, `create_modules_page`).
-    - [x] Bloque 4: Configuración General y Música (Métodos: `create_config_general_frame`, `create_config_music_frame`).
-    - [x] Bloque 5: Configuración de IA (Métodos: `create_config_ai_frame`, `create_config_ai_settings_frame`, `create_config_ai_engine_frame`).
-    - [x] Bloque 6: Editores de Memoria IA (Parte 1) (Métodos: `create_ai_identity_frame`, `create_ai_moods_frame`, `create_ai_moods_history_frame`).
-    - [x] Bloque 7: Editores de Memoria IA (Parte 2) (Métodos: `create_ai_users_frame`, `create_ai_memory_frame`, `create_ai_opinions_frame`).
-    - [x] Bloque 8: Editores de Memoria IA (Parte 3) (Métodos: `create_ai_ranges_frame`, `create_ai_self_frame`, `create_ai_prompts_frame`).
-    - [x] Bloque 9: Guías de Ayuda (Métodos: `create_*_guide_frame`).
-    - [x] Bloque 10: Funciones de Utilidad y Callbacks (Métodos: `update_module_state`, `open_amnesia_dialog`, `toggle_password`, etc.).
-    - [x] **Limpieza Final:** Eliminar el diccionario global `COLORS` de la cabecera del archivo.
-
-- [x] **Paso 3: Sistema Base de Idiomas (`settings/locales/`)**
-  - [x] Crear carpeta `settings/locales/` y archivo base `es.json`.
-  - [x] Crear archivo `en.json` (traducción base).
-  - [x] Crear clase `LanguageManager` en `shared/language_manager.py`.
-  - [x] **Paso 3.1: Plan de Migración de Textos en `launcher.py`** (Documentación para refactorización futura)
-    - [x] Bloque 1: Ventana Principal, Sidebar y Menús de Navegación.
-    - [x] Bloque 2: Dashboard y Página de Módulos (Títulos, botones, descripciones).
-    - [x] Bloque 3: Control y Configuración de Música.
-    - [x] Bloque 4: Configuración General (Labels, placeholders, tooltips).
-    - [x] Bloque 5: Configuración de IA (Ajustes generales, filtros y motores).
-    - [x] Bloque 6: Editores de IA Parte 1 (Identidad, Autoconcepto, Prompts, Estados de Ánimo).
-    - [x] Bloque 7: Editores de IA Parte 2 (Usuarios, Memoria, Opiniones, Rangos).
-    - [x] Bloque 8: Ventanas Emergentes (Diálogos de Amnesia, Nuevo Usuario, Nuevo Estado).
-    - [x] Bloque 9: Guías de Ayuda (Textos masivos de Privacidad, Discord, Local, etc.).
-    - [x] Bloque 10: Alertas, Estados y Consola (`lbl_status`, `messagebox`, actualizaciones del bot).
-    - [x] **Limpieza Final:** Verificar que no quede texto en español incrustado en la lógica del launcher.
-  - [x] **Paso 3.2: Internacionalización del Bot (`outputs.json`)**
-    - [x] Mover y renombrar `outputs.json` a `settings/locales/outputs_es.json` y crear `outputs_en.json`.
-    - [x] Adaptar `launcher.py` (Ajustes de Música) para que edite el archivo `outputs` correspondiente al idioma actual.
-    - [x] Adaptar `meowSick.py` y `cogs/music.py` para cargar las respuestas dinámicamente según el idioma configurado en `config.json`.
-  - [x] **Paso 3.3: Idioma nativo de la IA**
-    - [x] Añadir inyección de idioma en los Prompts del Sistema enviados a la API (Gemini/Ollama) para forzar a la IA a responder y analizar pensamientos en el idioma correcto.
-  - [x] **Paso 3.4: Internacionalización de Consolas (Logs y Prints)**
-    - [x] Diseñar estrategia para inyectar `LanguageManager` o una variante en los Cogs y el script principal del bot.
-    - [x] Extraer strings de inicialización y sistema (`meowSick.py`).
-    - [x] Extraer strings de eventos del módulo de audio (`music.py`).
-    - [x] Extraer logs operativos del ecosistema de IA (`core.py`, `memory.py`, `evolution.py`, `utils.py`).
-
-- [x] **Paso 4: Estandarización de Variables de Entorno (`python-dotenv`)**
-  - [x] **Paso 4.1:** Importar `dotenv` (`set_key`, `dotenv_values`) en `launcher.py` y definir ruta estandarizada hacia `.env`.
-  - [x] **Paso 4.2:** Refactorizar lectura/escritura en **Configuración General** (`DISCORD_TOKEN`, `ADMIN_ID`, `WELCOME_CHANNEL_ID`).
-  - [x] **Paso 4.3:** Refactorizar lectura/escritura en **Configuración de Música** (`PLAYLIST_URL`).
-  - [x] **Paso 4.4:** Refactorizar lectura/escritura en **Configuración de IA** (`AI_TARGET_CHANNELS`, `GEMINI_API_KEY`, `GEMINI_API_KEY_2`).
-  - [x] **Paso 4.5:** Limpieza final: Eliminar métodos manuales `load_env_dict` y `update_env_key` de `launcher.py`.
-
----
-
 ### Fase 2: Refactorización y División de la UI
 
 #### Paso 5: Preparar `launcher.py` para la Carga Perezosa
@@ -316,47 +203,83 @@ Repetir el Paso 6 metódicamente para las demás pantallas:
 
 #### Checklist de Progreso - Fase 2
 
-- [ ] **Paso 5: Preparar `launcher.py` para Carga Perezosa**
-  - [ ] Limpiar `__init__` eliminando las llamadas iniciales `create_*_page()`.
-  - [ ] Actualizar `show_frame()` para instanciación dinámica (Lazy Loading por Clase).
-  - [ ] Instanciar `ThemeManager`, `LanguageManager` y `ConfigManager` e inyectarlos como `controller`.
+- [x] **Paso 5: Preparar `launcher.py` para Carga Perezosa**
+  - [x] Limpiar `__init__` eliminando las llamadas iniciales `create_*_page()`.
+  - [x] Actualizar `show_frame()` para instanciación dinámica (Lazy Loading por Clase).
+  - [x] Instanciar `ThemeManager`, `LanguageManager` y `ConfigManager` e inyectarlos como `controller`.
 
-- [ ] **Paso 6: Migrar Vista Dashboard (`views/dashboard_view.py`)**
-  - [ ] Crear carpeta `views/` con `__init__.py`.
-  - [ ] Crear clase `DashboardFrame`, mover código y adaptarlo al controlador.
-  - [ ] Aplicar inyección de temas y strings de idioma.
+- [x] **Paso 6: Migrar Vista Dashboard (`views/dashboard_view.py`)**
+  - [x] Crear carpeta `views/` con `__init__.py`.
+  - [x] Crear clase `DashboardFrame`, mover código y adaptarlo al controlador.
+  - [x] Aplicar inyección de temas y strings de idioma.
 
 - [ ] **Paso 7: Migrar Vistas Principales**
-  - [ ] Crear subcarpetas `views/music/` y `views/config/` con sus `__init__.py`.
-  - [ ] `views/music/main_view.py`
-  - [ ] `views/modules_view.py`
+  - [x] Crear subcarpetas `views/music/` y `views/config/` con sus `__init__.py`.
+  - [x] `views/music/main_view.py`
+    - [x] Crear clase y migrar código de `create_music_page`.
+    - [x] Adaptar referencias y variables al `self.controller`.
+    - [x] Actualizar botón en el launcher y borrar método original.
+  - [x] `views/modules_view.py`
+    - [x] Crear clase y migrar código de `create_modules_page`.
+    - [x] Adaptar referencias y variables al `self.controller`.
+    - [x] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/config/general_view.py`
-  - [ ] `views/config/music_view.py`
-  - [ ] `views/config/ai_general_view.py`
+    - [x] Crear clase y migrar código de `create_config_general_frame`.
+    - [x] Adaptar referencias y variables al `self.controller`.
+    - [x] Actualizar botón en el launcher y borrar método original.
+  - [x] `views/config/music_view.py`
+    - [x] Crear clase y migrar código de `create_config_music_frame`.
+    - [x] Adaptar referencias y variables al `self.controller`.
+    - [x] Actualizar botón en el launcher y borrar método original.
+  - [x] `views/config/ai_general_view.py`
+    - [x] Crear clase y migrar código de `create_config_ai_frame`.
+    - [x] Adaptar referencias y variables al `self.controller`.
+    - [x] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/config/ai_settings_view.py`
+    - [ ] Crear clase y migrar código de `create_config_ai_settings_frame`.
+    - [ ] Adaptar referencias y variables al `self.controller`.
+    - [ ] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/config/ai_engine_view.py`
+    - [ ] Crear clase y migrar código de `create_config_ai_engine_frame`.
+    - [ ] Adaptar referencias y variables al `self.controller`.
+    - [ ] Actualizar botón en el launcher y borrar método original.
   - [ ] `views/config/ai_presets_view.py` *(nueva)*
-
+    - [ ] Crear interfaz base y enlazarla al menú lateral.
+  
 - [ ] **Paso 8: Migrar Editores de IA**
   - [ ] Crear subcarpeta `views/ai/` con `__init__.py`.
   - [ ] Reemplazar botones "Guardar" individuales por un botón global unificado por vista.
   - [ ] `views/ai/identity_editor.py`
+    - [ ] Migrar `create_ai_identity_frame`, adaptar controlador y borrar de launcher.
   - [ ] `views/ai/moods_editor.py`
+    - [ ] Migrar `create_ai_moods_frame`, adaptar controlador y borrar de launcher.
   - [ ] `views/ai/moods_history_editor.py`
+    - [ ] Migrar `create_ai_moods_history_frame`, adaptar controlador y borrar de launcher.
   - [ ] `views/ai/users_editor.py`
+    - [ ] Migrar `create_ai_users_frame`, unificar botón "Guardar", adaptar controlador y borrar de launcher.
   - [ ] `views/ai/memory_editor.py`
+    - [ ] Migrar `create_ai_memory_frame`, unificar botón "Guardar", adaptar controlador y borrar de launcher.
   - [ ] `views/ai/opinions_editor.py`
+    - [ ] Migrar `create_ai_opinions_frame`, unificar botón "Guardar", adaptar controlador y borrar de launcher.
   - [ ] `views/ai/ranges_editor.py`
+    - [ ] Migrar `create_ai_ranges_frame`, unificar botón "Guardar", adaptar controlador y borrar de launcher.
   - [ ] `views/ai/self_editor.py`
+    - [ ] Migrar `create_ai_self_frame`, unificar botón "Guardar", adaptar controlador y borrar de launcher.
   - [ ] `views/ai/prompts_editor.py`
+    - [ ] Migrar `create_ai_prompts_frame`, adaptar controlador y borrar de launcher.
 
 - [ ] **Paso 9: Migrar Guías**
   - [ ] Crear subcarpeta `views/guides/` con `__init__.py`.
   - [ ] `views/guides/discord_guide_view.py`
+    - [ ] Migrar `create_discord_guide_frame`, adaptar controlador y borrar de launcher.
   - [ ] `views/guides/google_guide_view.py`
+    - [ ] Migrar `create_google_guide_frame`, adaptar controlador y borrar de launcher.
   - [ ] `views/guides/id_guide_view.py`
+    - [ ] Migrar `create_id_guide_frame`, adaptar controlador y borrar de launcher.
   - [ ] `views/guides/privacy_guide_view.py`
+    - [ ] Migrar `create_privacy_guide_frame`, adaptar controlador y borrar de launcher.
   - [ ] `views/guides/local_guide_view.py`
+    - [ ] Migrar `create_local_guide_frame`, adaptar controlador y borrar de launcher.
 
 - [ ] **Tarea de Usabilidad: Reorganizar Menú de Configuración de IA**
   - [ ] Eliminar botón "🤖 Motores de IA" del menú de configuración general.

@@ -11,6 +11,12 @@ from dotenv import set_key, dotenv_values
 from shared.config_manager import ConfigManager
 from shared.theme_manager import ThemeManager
 from shared.language_manager import LanguageManager
+from views.dashboard_view import DashboardFrame
+from views.music.main_view import MusicFrame
+from views.modules_view import ModulesFrame
+from views.config.general_view import GeneralConfigFrame
+from views.config.music_view import MusicConfigFrame
+from views.config.ai_general_view import AIGeneralConfigFrame
 
 # --- CONFIGURACIÓN DE RUTAS Y VISUAL ---
 if getattr(sys, 'frozen', False):
@@ -39,6 +45,9 @@ class MeowLauncher(ctk.CTk):
         self.lang_code = lang_code
         self.lang_manager = LanguageManager(os.path.join(SETTINGS_DIR, "locales"), lang_code)
 
+        # Inyectar ConfigManager como dependencia del controlador
+        self.config_manager = ConfigManager
+
         self.title(self.lang_manager.get("app_title"))
         self.geometry("1280x720")
         self.minsize(800, 600)
@@ -52,7 +61,6 @@ class MeowLauncher(ctk.CTk):
         self.module_buttons = {}
         self.frames = {}
         self.general_entries = {}
-        self.music_entries = {}
         self.ai_reload_functions = {}
 
         # Grid principal
@@ -61,42 +69,35 @@ class MeowLauncher(ctk.CTk):
 
         # Construcción de la UI
         self.create_sidebar()
-        self.create_dashboard()
-        self.create_music_page()
-        self.create_modules_page()
-        self.create_config_general_frame()
-        self.create_config_music_frame()
-        self.create_config_ai_frame()
-        self.create_config_ai_settings_frame()
-        self.create_config_ai_engine_frame()
-        self.create_discord_guide_frame()
-        self.create_google_guide_frame()
-        self.create_id_guide_frame()
-        self.create_privacy_guide_frame()
-        self.create_local_guide_frame()
+        
+        self.show_frame(DashboardFrame)
 
-        # Editores de IA
-        self.create_ai_identity_frame()
-        self.create_ai_moods_frame()
-        self.create_ai_moods_history_frame()
-        self.create_ai_users_frame()
-        self.create_ai_memory_frame()
-        self.create_ai_opinions_frame()
-        self.create_ai_ranges_frame()
-        self.create_ai_self_frame()
-        self.create_ai_prompts_frame()
-
-        self.show_frame("dashboard")
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-    def show_frame(self, name):
+    def show_frame(self, view_class_or_name):
+        if isinstance(view_class_or_name, str):
+            name = view_class_or_name
+            # Puente temporal: Instancia la vista antigua si se solicita por string
+            if name not in self.frames:
+                creator = getattr(self, f"create_{name}_page", None) or getattr(self, f"create_{name}_frame", None)
+                if creator: creator()
+        else:
+            name = view_class_or_name.__name__
+            # Carga Perezosa (Lazy Loading): Solo instancia la vista de clase si no existe
+            if name not in self.frames:
+                # Se inyecta self como 'controller'
+                self.frames[name] = view_class_or_name(parent=self, controller=self)
+            
         for frame in self.frames.values():
             frame.grid_forget()
-        self.frames[name].grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+            
+        if name in self.frames:
+            self.frames[name].grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
         
         # Control dinámico de la advertencia en la barra lateral de IA
         if hasattr(self, 'warning_box') and self.warning_box.winfo_exists():
-            if name in ["config_ai_users", "config_ai_memory", "config_ai_opinions", "config_ai_self", "config_ai_moods", "config_ai_moods_history", "config_ai_prompts", "config_ai_ranges"]:
+            ai_editors = ["IdentityEditor", "MoodsEditor", "MoodsHistoryEditor", "UsersEditor", "MemoryEditor", "OpinionsEditor", "RangesEditor", "SelfEditor", "PromptsEditor"]
+            if name in ai_editors:
                 self.logo_frame.pack_forget()
                 self.warning_box.pack(fill="x")
             else:
@@ -173,8 +174,8 @@ class MeowLauncher(ctk.CTk):
         # 1. Sección Superior (Dashboard, Módulos)
         top_frame = ctk.CTkFrame(self.nav_container, fg_color="transparent")
         top_frame.pack(side="top", fill="x")
-        ctk.CTkButton(top_frame, text=self.lang_manager.get("nav_dashboard"), command=lambda: self.show_frame("dashboard"), **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
-        ctk.CTkButton(top_frame, text=self.lang_manager.get("nav_modules"), command=lambda: self.show_frame("modules"), **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
+        ctk.CTkButton(top_frame, text=self.lang_manager.get("nav_dashboard"), command=lambda: self.show_frame(DashboardFrame), **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
+        ctk.CTkButton(top_frame, text=self.lang_manager.get("nav_modules"), command=lambda: self.show_frame(ModulesFrame), **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
 
         # 2. Separador Superior
         ctk.CTkFrame(self.nav_container, height=2, fg_color=self.theme_manager.get("border")).pack(side="top", fill="x", padx=20, pady=10)
@@ -199,7 +200,7 @@ class MeowLauncher(ctk.CTk):
         scroll_shortcuts.pack(side="top", fill="both", expand=True)
         
         # Lista de accesos directos
-        ctk.CTkButton(scroll_shortcuts, text=self.lang_manager.get("nav_music"), command=lambda: self.show_frame("music"), **btn_opts).pack(padx=(12, 0), pady=6, fill="x")
+        ctk.CTkButton(scroll_shortcuts, text=self.lang_manager.get("nav_music"), command=lambda: self.show_frame(MusicFrame), **btn_opts).pack(padx=(12, 0), pady=6, fill="x")
         ctk.CTkButton(scroll_shortcuts, text=self.lang_manager.get("nav_ai"), command=self.open_ai_menu, **btn_opts).pack(padx=(12, 0), pady=6, fill="x")
 
     def render_config_sidebar(self):
@@ -213,7 +214,7 @@ class MeowLauncher(ctk.CTk):
         top_frame.pack(side="top", fill="x")
 
         ctk.CTkButton(top_frame, text=self.lang_manager.get("nav_back"), command=self.exit_config_menu, **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
-        ctk.CTkButton(top_frame, text=self.lang_manager.get("nav_general"), command=lambda: self.show_frame("config_general"), **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
+        ctk.CTkButton(top_frame, text=self.lang_manager.get("nav_general"), command=lambda: self.show_frame(GeneralConfigFrame), **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
 
         # 2. Separador Superior
         ctk.CTkFrame(self.nav_container, height=2, fg_color=self.theme_manager.get("border")).pack(side="top", fill="x", padx=20, pady=10)
@@ -236,16 +237,16 @@ class MeowLauncher(ctk.CTk):
         )
         scroll_mods.pack(side="top", fill="both", expand=True)
         
-        ctk.CTkButton(scroll_mods, text=self.lang_manager.get("nav_music_settings"), command=lambda: self.show_frame("config_music"), **btn_opts).pack(padx=(12, 0), pady=6, fill="x")
+        ctk.CTkButton(scroll_mods, text=self.lang_manager.get("nav_music_settings"), command=lambda: self.show_frame(MusicConfigFrame), **btn_opts).pack(padx=(12, 0), pady=6, fill="x")
         ctk.CTkButton(scroll_mods, text=self.lang_manager.get("nav_ai_settings"), command=self.open_config_ai_menu, **btn_opts).pack(padx=(12, 0), pady=6, fill="x")
 
     def open_config_menu(self):
         self.render_config_sidebar()
-        self.show_frame("config_general")
+        self.show_frame(GeneralConfigFrame)
 
     def exit_config_menu(self):
         self.render_main_sidebar()
-        self.show_frame("dashboard")
+        self.show_frame(DashboardFrame)
         
     def render_config_ai_sidebar(self):
         for widget in self.nav_container.winfo_children():
@@ -273,7 +274,7 @@ class MeowLauncher(ctk.CTk):
         
     def exit_config_ai_menu(self):
         self.render_config_sidebar()
-        self.show_frame("config_general")
+        self.show_frame(GeneralConfigFrame)
 
     def render_ai_sidebar(self):
         for widget in self.nav_container.winfo_children():
@@ -286,7 +287,7 @@ class MeowLauncher(ctk.CTk):
         top_frame.pack(side="top", fill="x")
 
         ctk.CTkButton(top_frame, text=self.lang_manager.get("nav_back"), command=self.exit_ai_menu, **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
-        ctk.CTkButton(top_frame, text=self.lang_manager.get("nav_ai_general"), command=lambda: self.show_frame("config_ai"), **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
+        ctk.CTkButton(top_frame, text=self.lang_manager.get("nav_ai_general"), command=lambda: self.show_frame(AIGeneralConfigFrame), **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
         ctk.CTkLabel(top_frame, text=self.lang_manager.get("nav_memory_editors_title"), font=ctk.CTkFont(size=12, weight="bold"), text_color=self.theme_manager.get("accent")).pack(padx=(16, 16), pady=(10, 0), fill="x", anchor="w")
 
         # 2. Separador Superior
@@ -314,11 +315,11 @@ class MeowLauncher(ctk.CTk):
 
     def open_ai_menu(self):
         self.render_ai_sidebar()
-        self.show_frame("config_ai")
+        self.show_frame(AIGeneralConfigFrame)
 
     def exit_ai_menu(self):
         self.render_main_sidebar()
-        self.show_frame("dashboard")
+        self.show_frame(DashboardFrame)
 
     def open_amnesia_dialog(self):
         dialog = ctk.CTkToplevel(self)
@@ -382,169 +383,6 @@ class MeowLauncher(ctk.CTk):
             try: func()
             except: pass
 
-    # --- PÁGINA 1: DASHBOARD ---
-    def create_dashboard(self):
-        frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.frames["dashboard"] = frame
-        frame.grid_columnconfigure(0, weight=1)
-        frame.grid_rowconfigure(1, weight=1)
-
-        # Header con controles
-        header = ctk.CTkFrame(frame, fg_color=self.theme_manager.get("bg_card"), corner_radius=16, border_width=1, border_color=self.theme_manager.get("border"))
-        header.grid(row=0, column=0, sticky="ew", pady=(0, 16))
-        
-        controls = ctk.CTkFrame(header, fg_color="transparent")
-        controls.pack(padx=20, pady=20, fill="x")
-
-        self.btn_start = ctk.CTkButton(controls, text=self.lang_manager.get("dash_btn_start"), command=self.start_bot, fg_color=self.theme_manager.get("accent"), hover_color=self.theme_manager.get("accent_dim"), text_color=self.theme_manager.get("bg_dark"), height=40, corner_radius=10, font=ctk.CTkFont(weight="bold"))
-        self.btn_start.pack(side="left", padx=(0, 10))
-        
-        self.btn_stop = ctk.CTkButton(controls, text=self.lang_manager.get("dash_btn_stop"), command=self.stop_bot, fg_color=self.theme_manager.get("bg_dark"), hover_color="#333333", text_color=self.theme_manager.get("red"), height=40, corner_radius=10, state="disabled")
-        self.btn_stop.pack(side="left", padx=(0, 16))
-        
-        self.status_label = ctk.CTkLabel(controls, text=self.lang_manager.get("dash_status_off"), font=ctk.CTkFont(size=13, weight="bold"), text_color=self.theme_manager.get("text_dim"))
-        self.status_label.pack(side="left")
-        
-        self.progress_bar = ctk.CTkProgressBar(controls, width=150, height=10, progress_color=self.theme_manager.get("accent"), fg_color=self.theme_manager.get("bg_dark"))
-        self.progress_bar.set(0)
-        # Se oculta inicialmente; se empacará y mostrará dinámicamente al iniciar
-
-        # Consolas del Dashboard
-        console_area = ctk.CTkFrame(frame, fg_color="transparent")
-        console_area.grid(row=1, column=0, sticky="nsew")
-        console_area.grid_columnconfigure(0, weight=1)
-        console_area.grid_rowconfigure(1, weight=2) # Terminal limpia (arriba, más pequeña)
-        console_area.grid_rowconfigure(3, weight=3) # Registro completo (abajo, más grande)
-
-        # Terminal limpia: solo salidas generales legibles (sin ruido de asyncio/discord.py)
-        ctk.CTkLabel(console_area, text=self.lang_manager.get("dash_term_clean"), text_color=self.theme_manager.get("accent"), font=ctk.CTkFont(family="Consolas", size=12, weight="bold"), anchor="w").grid(row=0, column=0, sticky="ew", padx=5, pady=(0,2))
-        self.console_main = ctk.CTkTextbox(console_area, font=("Consolas", 11), fg_color=self.theme_manager.get("bg_card"), text_color=self.theme_manager.get("text"), border_width=1, border_color=self.theme_manager.get("border"), corner_radius=8)
-        self.console_main.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
-        self.console_main.configure(state="disabled")
-
-        # Registro completo: dump absoluto de cada línea, incluyendo asyncio, discord.py y logging
-        ctk.CTkLabel(console_area, text=self.lang_manager.get("dash_term_full"), text_color=self.theme_manager.get("green"), font=ctk.CTkFont(family="Consolas", size=12, weight="bold"), anchor="w").grid(row=2, column=0, sticky="ew", padx=5, pady=(0,2))
-        self.console_errors = ctk.CTkTextbox(console_area, font=("Consolas", 10), fg_color="#090909", text_color=self.theme_manager.get("green"), border_width=1, border_color=self.theme_manager.get("border"), corner_radius=8)
-        self.console_errors.grid(row=3, column=0, sticky="nsew")
-        self.console_errors.configure(state="disabled")
-
-    # --- PÁGINA 2: MÚSICA (Con consola filtrada) ---
-    def create_music_page(self):
-        frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.frames["music"] = frame
-        frame.grid_columnconfigure(0, weight=1)
-        # Ajuste de pesos: La cola (row 5) se expande, la consola (row 7) se queda fija
-        frame.grid_rowconfigure(5, weight=1) 
-
-        # 1. Header y Toggle
-        header = ctk.CTkFrame(frame, fg_color="transparent")
-        header.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-        
-        ctk.CTkLabel(header, text=self.lang_manager.get("mus_title"), font=ctk.CTkFont(size=20, weight="bold"), text_color=self.theme_manager.get("accent")).pack(side="left")
-        
-        # Botón para activar/desactivar módulo (Sincronizado)
-        self.btn_music_toggle = ctk.CTkButton(header, text="...", width=120, height=30, command=lambda: self.toggle_module("music", self.btn_music_toggle))
-        self.btn_music_toggle.pack(side="right")
-        
-        btn_music_config = ctk.CTkButton(header, text="⚙", width=30, height=30, fg_color=self.theme_manager.get("bg_card"), hover_color=self.theme_manager.get("border"), text_color=self.theme_manager.get("text"), command=lambda: (self.open_config_menu(), self.show_frame("config_music")))
-        btn_music_config.pack(side="right", padx=(0, 10))
-        
-        if "music" not in self.module_buttons: self.module_buttons["music"] = []
-        self.module_buttons["music"].append(self.btn_music_toggle)
-        self.update_module_state("music", self.btn_music_toggle)
-
-        # 2. Área de Input
-        input_frame = ctk.CTkFrame(frame, fg_color=self.theme_manager.get("bg_card"), corner_radius=10)
-        input_frame.grid(row=1, column=0, sticky="ew", pady=(0, 10))
-        
-        self.music_entry = ctk.CTkEntry(input_frame, placeholder_text=self.lang_manager.get("mus_entry_placeholder"), height=35)
-        self.music_entry.pack(side="left", fill="x", expand=True, padx=15, pady=15)
-        
-        ctk.CTkButton(input_frame, text=self.lang_manager.get("mus_btn_play"), width=100, height=35, fg_color=self.theme_manager.get("green"), text_color=self.theme_manager.get("bg_dark"), hover_color="#89b458", command=lambda: self.send_music_cmd("play")).pack(side="right", padx=15)
-
-        # 3. Botones de Control (Cuadrícula completa)
-        controls_frame = ctk.CTkFrame(frame, fg_color="transparent")
-        controls_frame.grid(row=2, column=0, sticky="ew", pady=(0, 15))
-        
-        def mk_btn(parent, txt, cmd, col=None, txt_col=None, hover=None):
-            col = col or self.theme_manager.get("bg_card")
-            txt_col = txt_col or self.theme_manager.get("text")
-            hover = hover or self.theme_manager.get("border")
-            return ctk.CTkButton(parent, text=txt, command=lambda: self.send_music_cmd(cmd), fg_color=col, text_color=txt_col, hover_color=hover, width=80, height=30)
-
-        # Fila 1
-        r1 = ctk.CTkFrame(controls_frame, fg_color="transparent")
-        r1.pack(fill="x", pady=3)
-        mk_btn(r1, self.lang_manager.get("mus_btn_pause"), "pause").pack(side="left", padx=(0, 5), expand=True, fill="x")
-        mk_btn(r1, self.lang_manager.get("mus_btn_resume"), "resume").pack(side="left", padx=(0, 5), expand=True, fill="x")
-        mk_btn(r1, self.lang_manager.get("mus_btn_stop"), "stop", col=self.theme_manager.get("bg_dark"), txt_col=self.theme_manager.get("red"), hover="#333333").pack(side="left", padx=(0, 5), expand=True, fill="x")
-        mk_btn(r1, self.lang_manager.get("mus_btn_leave"), "leave", col=self.theme_manager.get("bg_dark"), txt_col=self.theme_manager.get("red"), hover="#333333").pack(side="left", expand=True, fill="x")
-
-        # Fila 2
-        r2 = ctk.CTkFrame(controls_frame, fg_color="transparent")
-        r2.pack(fill="x", pady=3)
-        mk_btn(r2, self.lang_manager.get("mus_btn_skip"), "skip").pack(side="left", padx=(0, 5), expand=True, fill="x")
-        mk_btn(r2, self.lang_manager.get("mus_btn_next"), "next").pack(side="left", padx=(0, 5), expand=True, fill="x")
-        mk_btn(r2, self.lang_manager.get("mus_btn_shuffle"), "shuffle").pack(side="left", padx=(0, 5), expand=True, fill="x")
-        mk_btn(r2, self.lang_manager.get("mus_btn_playlist"), "pls").pack(side="left", expand=True, fill="x")
-
-        # 4. Now Playing (Actualizado dinámicamente)
-        self.lbl_now_playing = ctk.CTkLabel(frame, text=self.lang_manager.get("mus_lbl_now_playing_empty"), font=ctk.CTkFont(size=13, weight="bold"), text_color=self.theme_manager.get("accent"), anchor="w")
-        self.lbl_now_playing.grid(row=3, column=0, sticky="ew", padx=10, pady=(5, 5))
-
-        # 5. Lista de Cola (Expandida)
-        ctk.CTkLabel(frame, text=self.lang_manager.get("mus_lbl_queue"), text_color=self.theme_manager.get("text_dim"), anchor="w", font=ctk.CTkFont(size=12, weight="bold")).grid(row=4, column=0, sticky="ew", padx=5, pady=(5, 2))
-        
-        self.queue_display = ctk.CTkTextbox(frame, font=("Consolas", 12), fg_color=self.theme_manager.get("bg_sidebar"), text_color=self.theme_manager.get("text"), corner_radius=8, border_width=1, border_color=self.theme_manager.get("border"))
-        self.queue_display.grid(row=5, column=0, sticky="nsew", pady=(0, 10))
-        self.queue_display.configure(state="disabled")
-
-        # 6. Consola Filtrada (Pequeña abajo)
-        ctk.CTkLabel(frame, text=self.lang_manager.get("mus_term_title"), text_color=self.theme_manager.get("accent"), font=ctk.CTkFont(family="Consolas", size=11), anchor="w").grid(row=6, column=0, sticky="ew", padx=5, pady=(0,2))
-        self.console_music = ctk.CTkTextbox(frame, font=("Consolas", 10), height=80, fg_color=self.theme_manager.get("bg_card"), text_color=self.theme_manager.get("accent"), border_width=1, border_color=self.theme_manager.get("border"), corner_radius=8)
-        self.console_music.grid(row=7, column=0, sticky="ew", pady=(0, 5))
-        self.console_music.configure(state="disabled")
-
-    # --- PÁGINA 3: MÓDULOS ---
-    def create_modules_page(self):
-        frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.frames["modules"] = frame
-        frame.grid_columnconfigure(0, weight=1)
-        
-        ctk.CTkLabel(frame, text=self.lang_manager.get("mod_title"), font=ctk.CTkFont(size=18, weight="bold"), text_color=self.theme_manager.get("text")).grid(row=0, column=0, pady=(20, 10))
-        
-        container = ctk.CTkFrame(frame, fg_color=self.theme_manager.get("bg_card"), corner_radius=10)
-        container.grid(row=1, column=0, sticky="ew", padx=20)
-        container.grid_columnconfigure(0, weight=1)
-
-        # Función para crear filas de módulos
-        def add_module_row(mod_key, mod_title, help_desc):
-            wrapper = ctk.CTkFrame(container, fg_color="transparent")
-            wrapper.pack(fill="x", pady=0)
-            
-            row_frame = ctk.CTkFrame(wrapper, fg_color="transparent")
-            row_frame.pack(fill="x", padx=20, pady=15)
-            
-            ctk.CTkLabel(row_frame, text=mod_title, font=ctk.CTkFont(size=14)).pack(side="left")
-            
-            help_frame = ctk.CTkFrame(wrapper, fg_color="transparent")
-            ctk.CTkLabel(help_frame, text=f"ℹ {help_desc}", text_color=self.theme_manager.get("text_dim"), font=ctk.CTkFont(size=12), anchor="w", justify="left", wraplength=600).pack(side="left", padx=20)
-            
-            btn_help = ctk.CTkButton(row_frame, text="?", width=28, height=28, fg_color=self.theme_manager.get("bg_card"), hover_color=self.theme_manager.get("border"), text_color=self.theme_manager.get("text"), command=lambda h=help_frame: self.toggle_help(h, "pack", fill="x", pady=(0, 10)))
-            btn_help.pack(side="right", padx=(10, 0))
-            
-            btn = ctk.CTkButton(row_frame, text="...", width=120, height=30)
-            btn.configure(command=lambda m=mod_key, b=btn: self.toggle_module(m, b))
-            btn.pack(side="right")
-            
-            if mod_key not in self.module_buttons: self.module_buttons[mod_key] = []
-            self.module_buttons[mod_key].append(btn)
-            self.update_module_state(mod_key, btn)
-
-        add_module_row("help", self.lang_manager.get("mod_help_title"), self.lang_manager.get("mod_help_desc"))
-        add_module_row("music", self.lang_manager.get("mod_music_title"), self.lang_manager.get("mod_music_desc"))
-        add_module_row("ia", self.lang_manager.get("mod_ai_title"), self.lang_manager.get("mod_ai_desc"))
-
     # --- HELPER JSON ---
     def _load_json_file(self, filename):
         path = os.path.join(SETTINGS_DIR, filename)
@@ -555,293 +393,6 @@ class MeowLauncher(ctk.CTk):
         path = os.path.join(SETTINGS_DIR, filename)
         use_lock = filename == "config.json" or "outputs_" in filename
         ConfigManager.save_json(path, data, use_lock=use_lock)
-
-    # --- PÁGINA 4.1: CONFIGURACIÓN GENERAL ---
-    def create_config_general_frame(self):
-        frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.frames["config_general"] = frame
-
-        ctk.CTkLabel(frame, text=self.lang_manager.get("cfg_gen_title"), font=ctk.CTkFont(size=20, weight="bold"), text_color=self.theme_manager.get("accent")).pack(pady=(0, 20))
-
-        scroll = ctk.CTkScrollableFrame(frame, fg_color="transparent")
-        scroll.pack(fill="both", expand=True)
-
-        card = ctk.CTkFrame(scroll, fg_color=self.theme_manager.get("bg_card"), corner_radius=16, border_width=1, border_color=self.theme_manager.get("border"))
-        card.pack(fill="x", padx=20, pady=10)
-
-        # Cargar datos actuales
-        config_data = self._load_json_file("config.json")
-        outputs_filename = f"locales/outputs_{self.lang_code}.json"
-        outputs_data = self._load_json_file(outputs_filename) or {}
-        env_data = dotenv_values(ENV_PATH)
-
-        self.general_entries = {}
-
-        def add_gen_row(label, key, source, help_txt, is_password=False):
-            # Wrapper: Mantiene la fila y su ayuda juntas
-            wrapper = ctk.CTkFrame(card, fg_color="transparent")
-            wrapper.pack(fill="x", pady=0)
-
-            row = ctk.CTkFrame(wrapper, fg_color="transparent")
-            row.pack(fill="x", pady=8, padx=15)
-            ctk.CTkLabel(row, text=label, width=150, anchor="w", text_color=self.theme_manager.get("text")).pack(side="left")
-            
-            entry = ctk.CTkEntry(row, fg_color=self.theme_manager.get("bg_dark"), border_color=self.theme_manager.get("border"), text_color=self.theme_manager.get("text"), show="*" if is_password else "")
-            entry.pack(side="left", fill="x", expand=True, padx=(10, 10))
-            
-            # Valor inicial según origen
-            val = ""
-            if source == "config": val = config_data.get(key, "")
-            elif source == "outputs": val = outputs_data.get(key, "")
-            elif source == "env": val = env_data.get(key, "")
-            
-            entry.insert(0, str(val))
-            self.general_entries[key] = (entry, source)
-            
-            # Contenedor de ayuda (se oculta/muestra)
-            if help_txt:
-                help_frame = ctk.CTkFrame(wrapper, fg_color="transparent")
-                # Nota: No lo empaquetamos (pack) aquí para que inicie oculto
-                
-                ctk.CTkLabel(help_frame, text=f"ℹ {help_txt}", text_color=self.theme_manager.get("text_dim"), font=ctk.CTkFont(size=11), anchor="w").pack(side="left")
-                
-                # Enlace a guía de IDs si corresponde
-                if key in ["ADMIN_ID", "WELCOME_CHANNEL_ID"]:
-                    link_btn = ctk.CTkButton(help_frame, text=self.lang_manager.get("cfg_gen_link_get_id"), width=90, height=20, fg_color="transparent", text_color=self.theme_manager.get("accent"), font=ctk.CTkFont(size=11, underline=True), hover=False, command=lambda: self.show_frame("id_guide"))
-                    # Truco visual: hover color transparente
-                    link_btn.configure(hover_color=self.theme_manager.get("bg_card"))
-                    link_btn.pack(side="left", padx=5)
-
-                ctk.CTkButton(row, text="?", width=28, height=28, fg_color=self.theme_manager.get("bg_card"), hover_color=self.theme_manager.get("border"), text_color=self.theme_manager.get("text"), command=lambda h=help_frame: self.toggle_help(h, "pack", fill="x", padx=165)).pack(side="right")
-
-        add_gen_row(self.lang_manager.get("cfg_gen_token"), "DISCORD_TOKEN", "env", self.lang_manager.get("cfg_gen_help_token"), is_password=True)
-        add_gen_row(self.lang_manager.get("cfg_gen_prefix"), "prefix", "config", self.lang_manager.get("cfg_gen_help_prefix"))
-        add_gen_row(self.lang_manager.get("cfg_gen_admin_id"), "ADMIN_ID", "env", self.lang_manager.get("cfg_gen_help_admin"))
-        add_gen_row(self.lang_manager.get("cfg_gen_welcome_id"), "WELCOME_CHANNEL_ID", "env", self.lang_manager.get("cfg_gen_help_welcome"))
-        add_gen_row(self.lang_manager.get("cfg_gen_welcome_msg"), "welcome_message", "outputs", self.lang_manager.get("cfg_gen_help_welcome_msg"))
-        add_gen_row(self.lang_manager.get("cfg_gen_leave_msg"), "disconnected", "outputs", self.lang_manager.get("cfg_gen_help_leave_msg"))
-        add_gen_row(self.lang_manager.get("cfg_gen_timeout_msg"), "timeout_msg", "outputs", self.lang_manager.get("cfg_gen_help_timeout_msg"))
-
-        ctk.CTkButton(scroll, text=self.lang_manager.get("btn_save"), command=self.save_general_config, fg_color=self.theme_manager.get("accent"), hover_color=self.theme_manager.get("accent_dim"), text_color=self.theme_manager.get("bg_dark"), height=40, corner_radius=10).pack(pady=(20, 5))
-        self.lbl_status_general = ctk.CTkLabel(scroll, text="", text_color=self.theme_manager.get("green"), font=ctk.CTkFont(size=12, weight="bold"))
-        self.lbl_status_general.pack(pady=(0, 20))
-
-    def save_general_config(self):
-        # Cargar frescos
-        cfg = self._load_json_file("config.json")
-        outputs_filename = f"locales/outputs_{self.lang_code}.json"
-        out = self._load_json_file(outputs_filename) or {}
-
-        for key, (entry, source) in self.general_entries.items():
-            val = entry.get().strip()
-            if source == "config": cfg[key] = val
-            elif source == "outputs": out[key] = val
-            elif source == "env": set_key(ENV_PATH, key, val) # Escribe directo a disco
-
-        self._save_json_file("config.json", cfg)
-        self._save_json_file(outputs_filename, out)
-        self.lbl_status_general.configure(text=self.lang_manager.get("msg_saved_success"), text_color=self.theme_manager.get("green"))
-        self.after(3000, lambda: self.lbl_status_general.configure(text=""))
-
-    # --- PÁGINA 4.2: CONFIGURACIÓN MÚSICA ---
-    def create_config_music_frame(self):
-        frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.frames["config_music"] = frame
-
-        ctk.CTkLabel(frame, text=self.lang_manager.get("cfg_mus_title"), font=ctk.CTkFont(size=20, weight="bold"), text_color=self.theme_manager.get("accent")).pack(pady=(0, 20))
-
-        scroll = ctk.CTkScrollableFrame(frame, fg_color="transparent")
-        scroll.pack(fill="both", expand=True)
-
-        # Playlist URL (ENV)
-        ctk.CTkLabel(scroll, text=self.lang_manager.get("cfg_mus_pl_title"), font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=20, pady=(10, 5))
-        pl_card = ctk.CTkFrame(scroll, fg_color=self.theme_manager.get("bg_card"), corner_radius=10)
-        pl_card.pack(fill="x", padx=20, pady=5)
-        
-        # Wrapper para Playlist
-        pl_wrapper = ctk.CTkFrame(pl_card, fg_color="transparent")
-        pl_wrapper.pack(fill="x", pady=10)
-
-        pl_row = ctk.CTkFrame(pl_wrapper, fg_color="transparent")
-        pl_row.pack(fill="x", padx=15)
-        
-        ctk.CTkLabel(pl_row, text=self.lang_manager.get("cfg_mus_pl_label"), text_color=self.theme_manager.get("text")).pack(side="left")
-        self.entry_playlist = ctk.CTkEntry(pl_row, fg_color=self.theme_manager.get("bg_dark"), border_color=self.theme_manager.get("border"), text_color=self.theme_manager.get("text"), width=300)
-        self.entry_playlist.pack(side="left", fill="x", expand=True, padx=(10, 10))
-        
-        env_data = dotenv_values(ENV_PATH)
-        self.entry_playlist.insert(0, env_data.get("PLAYLIST_URL", ""))
-        
-        pl_help = ctk.CTkFrame(pl_wrapper, fg_color="transparent")
-        ctk.CTkLabel(pl_help, text=f"ℹ {self.lang_manager.get('cfg_mus_pl_help')}", text_color=self.theme_manager.get("text_dim"), font=ctk.CTkFont(size=11), anchor="w").pack(side="left")
-        ctk.CTkButton(pl_row, text="?", width=28, height=28, fg_color=self.theme_manager.get("bg_card"), hover_color=self.theme_manager.get("border"), text_color=self.theme_manager.get("text"), command=lambda h=pl_help: self.toggle_help(h, "pack", fill="x", padx=180)).pack(side="right")
-
-        # Mensajes de Salida (OUTPUTS)
-        ctk.CTkLabel(scroll, text=self.lang_manager.get("cfg_mus_msg_title"), font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=20, pady=(20, 5))
-        msg_card = ctk.CTkFrame(scroll, fg_color=self.theme_manager.get("bg_card"), corner_radius=10)
-        msg_card.pack(fill="x", padx=20, pady=5)
-
-        outputs_filename = f"locales/outputs_{self.lang_code}.json"
-        outputs_data = self._load_json_file(outputs_filename) or {}
-        self.music_entries = {}
-        
-        music_msgs = [
-            # --- 1. REPRODUCCIÓN (!play) ---
-            ("playing_now", "[!play] playing_now ({title})", self.lang_manager.get("cfg_mus_help_playing_now")),
-            ("added_queue", "[!play] added_queue ({title})", self.lang_manager.get("cfg_mus_help_added_queue")),
-            ("play_no_args", "[!play] play_no_args", self.lang_manager.get("cfg_mus_help_play_no_args")),
-            ("connect_voice", "[!play] connect_voice", self.lang_manager.get("cfg_mus_help_connect_voice")),
-
-            # --- 2. LISTAS (!playlist / !next) ---
-            ("playlist_added", "[!playlist] playlist_added ({count})", self.lang_manager.get("cfg_mus_help_playlist_added")),
-            ("playlist_no_config", "[!playlist] playlist_no_config", self.lang_manager.get("cfg_mus_help_playlist_no_config")),
-            ("next_added", "[!next] next_added ({title})", self.lang_manager.get("cfg_mus_help_next_added")),
-
-            # --- 3. CONTROLES (!skip, !pause, !stop) ---
-            ("skip_msg", "[!skip] skip_msg", self.lang_manager.get("cfg_mus_help_skip_msg")),
-            ("nothing_playing", "[!skip] nothing_playing", self.lang_manager.get("cfg_mus_help_nothing_playing")),
-            ("paused", "[!pause] paused", self.lang_manager.get("cfg_mus_help_paused")),
-            ("resumed", "[!resume] resumed", self.lang_manager.get("cfg_mus_help_resumed")),
-            ("stop_msg", "[!stop] stop_msg", self.lang_manager.get("cfg_mus_help_stop_msg")),
-
-            # --- 4. UTILIDADES (!list, !shuffle) ---
-            ("list_title", "[!list] list_title", self.lang_manager.get("cfg_mus_help_list_title")),
-            ("list_empty", "[!list] list_empty", self.lang_manager.get("cfg_mus_help_list_empty")),
-            ("shuffled", "[!shuffle] shuffled", self.lang_manager.get("cfg_mus_help_shuffled")),
-            ("shuffle_error", "[!shuffle] shuffle_error", self.lang_manager.get("cfg_mus_help_shuffle_error")),
-
-            # --- 5. CONEXIÓN Y ESTADO (Auto / !leave) ---
-            ("queue_finished", "[Auto] queue_finished", self.lang_manager.get("cfg_mus_help_queue_finished")),
-            ("timeout_msg", "[Auto] timeout_msg", self.lang_manager.get("cfg_mus_help_timeout_msg")),
-            ("disconnected", "[!leave] disconnected", self.lang_manager.get("cfg_mus_help_disconnected")),
-            ("not_connected", "[!leave] not_connected", self.lang_manager.get("cfg_mus_help_not_connected")),
-
-            # --- 6. ERRORES DE SISTEMA ---
-            ("connect_error", "[Error] connect_error", self.lang_manager.get("cfg_mus_help_connect_error")),
-            ("search_error", "[Error] search_error", self.lang_manager.get("cfg_mus_help_search_error")),
-            ("ffmpeg_error", "[Error] ffmpeg_error", self.lang_manager.get("cfg_mus_help_ffmpeg_error"))
-        ]
-
-        for key, label, help_text in music_msgs:
-            wrapper = ctk.CTkFrame(msg_card, fg_color="transparent")
-            wrapper.pack(fill="x", pady=0)
-
-            row = ctk.CTkFrame(wrapper, fg_color="transparent")
-            row.pack(fill="x", pady=5, padx=15)
-            
-            ctk.CTkLabel(row, text=label, width=200, anchor="w", text_color=self.theme_manager.get("text_dim")).pack(side="left")
-            entry = ctk.CTkEntry(row, fg_color=self.theme_manager.get("bg_dark"), border_color=self.theme_manager.get("border"), text_color=self.theme_manager.get("text"))
-            entry.pack(side="left", fill="x", expand=True)
-            entry.insert(0, outputs_data.get(key, ""))
-            self.music_entries[key] = entry
-            
-            # Ayuda desplegable
-            help_frame = ctk.CTkFrame(wrapper, fg_color="transparent")
-            ctk.CTkLabel(help_frame, text=f"ℹ {help_text}", text_color=self.theme_manager.get("text_dim"), font=ctk.CTkFont(size=11), anchor="w").pack(side="left")
-            ctk.CTkButton(row, text="?", width=28, height=28, fg_color=self.theme_manager.get("bg_card"), hover_color=self.theme_manager.get("border"), text_color=self.theme_manager.get("text"), command=lambda h=help_frame: self.toggle_help(h, "pack", fill="x", padx=215)).pack(side="right", padx=(5,0))
-
-        ctk.CTkButton(scroll, text=self.lang_manager.get("btn_save"), command=self.save_music_config, fg_color=self.theme_manager.get("accent"), hover_color=self.theme_manager.get("accent_dim"), text_color=self.theme_manager.get("bg_dark"), height=40, corner_radius=10).pack(pady=(20, 5))
-        self.lbl_status_music = ctk.CTkLabel(scroll, text="", text_color=self.theme_manager.get("green"), font=ctk.CTkFont(size=12, weight="bold"))
-        self.lbl_status_music.pack(pady=(0, 20))
-
-    def save_music_config(self):
-        # Guardar Playlist en ENV
-        set_key(ENV_PATH, "PLAYLIST_URL", self.entry_playlist.get().strip())
-
-        # Guardar Mensajes en OUTPUTS
-        outputs_filename = f"locales/outputs_{self.lang_code}.json"
-        out = self._load_json_file(outputs_filename) or {}
-        for key, entry in self.music_entries.items():
-            out[key] = entry.get().strip()
-        self._save_json_file(outputs_filename, out)
-        
-        self.lbl_status_music.configure(text=self.lang_manager.get("msg_saved_success"), text_color=self.theme_manager.get("green"))
-        self.after(3000, lambda: self.lbl_status_music.configure(text=""))
-
-    # --- PÁGINA 4.4: CONFIGURACIÓN IA (NUEVO) ---
-    def create_config_ai_frame(self):
-        frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.frames["config_ai"] = frame
-
-        # 1. Header y Toggle Principal
-        header = ctk.CTkFrame(frame, fg_color="transparent")
-        header.pack(side="top", fill="x", pady=(0, 10))
-        
-        ctk.CTkLabel(header, text=self.lang_manager.get("cfg_ai_title"), font=ctk.CTkFont(size=20, weight="bold"), text_color=self.theme_manager.get("accent")).pack(side="left")
-        
-        self.btn_ai_toggle = ctk.CTkButton(header, text="...", width=120, height=30, command=lambda: self.toggle_module("ia", self.btn_ai_toggle))
-        self.btn_ai_toggle.pack(side="right")
-        
-        btn_ai_config = ctk.CTkButton(header, text="⚙", width=30, height=30, fg_color=self.theme_manager.get("bg_card"), hover_color=self.theme_manager.get("border"), text_color=self.theme_manager.get("text"), command=self.open_config_ai_menu)
-        btn_ai_config.pack(side="right", padx=(0, 10))
-        
-        if "ia" not in self.module_buttons: self.module_buttons["ia"] = []
-        self.module_buttons["ia"].append(self.btn_ai_toggle)
-        self.update_module_state("ia", self.btn_ai_toggle)
-
-        scroll = ctk.CTkScrollableFrame(frame, fg_color="transparent", scrollbar_button_color=self.theme_manager.get("bg_dark"), scrollbar_button_hover_color=self.theme_manager.get("bg_dark"))
-        scroll.pack(side="top", fill="both", expand=True)
-
-        # 2. Consola de IA (Dentro del scroll, alineado con las tarjetas)
-        console_area = ctk.CTkFrame(scroll, fg_color="transparent")
-        console_area.pack(side="top", fill="x", padx=20, pady=(0, 10))
-        
-        ctk.CTkLabel(console_area, text=self.lang_manager.get("cfg_ai_term_title"), text_color=self.theme_manager.get("accent"), font=ctk.CTkFont(family="Consolas", size=11), anchor="w").pack(fill="x", padx=5)
-        self.console_ai = ctk.CTkTextbox(console_area, font=("Consolas", 10), height=150, fg_color=self.theme_manager.get("bg_card"), text_color=self.theme_manager.get("accent"), border_width=1, border_color=self.theme_manager.get("border"), corner_radius=8)
-        self.console_ai.pack(fill="x", pady=(0, 5))
-        self.console_ai.configure(state="disabled")
-
-        # Sección 1: Subprocesos (Switches)
-        ctk.CTkLabel(scroll, text=self.lang_manager.get("cfg_ai_sub_title"), font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=20, pady=(10, 5))
-        proc_card = ctk.CTkFrame(scroll, fg_color=self.theme_manager.get("bg_card"), corner_radius=10)
-        proc_card.pack(fill="x", padx=20, pady=5)
-
-        self.ai_switches = {}
-        
-        def add_switch(key, title, desc):
-            row = ctk.CTkFrame(proc_card, fg_color="transparent")
-            row.pack(fill="x", padx=15, pady=10)
-            
-            info_frame = ctk.CTkFrame(row, fg_color="transparent")
-            info_frame.pack(side="left", fill="both")
-            ctk.CTkLabel(info_frame, text=title, font=ctk.CTkFont(weight="bold"), text_color=self.theme_manager.get("text"), anchor="w").pack(anchor="w")
-            ctk.CTkLabel(info_frame, text=desc, font=ctk.CTkFont(size=11), text_color=self.theme_manager.get("text_dim"), anchor="w").pack(anchor="w")
-            
-            switch = ctk.CTkSwitch(row, text="", onvalue=True, offvalue=False, progress_color=self.theme_manager.get("accent"), command=self.save_ai_switches_instant)
-            switch.pack(side="right")
-            self.ai_switches[key] = switch
-
-        add_switch("enable_chat", self.lang_manager.get("cfg_ai_sw_chat"), self.lang_manager.get("cfg_ai_sw_chat_desc"))
-        add_switch("enable_mood_analysis", self.lang_manager.get("cfg_ai_sw_mood"), self.lang_manager.get("cfg_ai_sw_mood_desc"))
-        add_switch("enable_memory_learning", self.lang_manager.get("cfg_ai_sw_mem"), self.lang_manager.get("cfg_ai_sw_mem_desc"))
-        add_switch("listen_to_bots", self.lang_manager.get("cfg_ai_sw_bots"), self.lang_manager.get("cfg_ai_sw_bots_desc"))
-        add_switch("enable_vision", self.lang_manager.get("cfg_ai_sw_vision"), self.lang_manager.get("cfg_ai_sw_vision_desc"))
-        add_switch("enable_tts", self.lang_manager.get("cfg_ai_sw_tts"), self.lang_manager.get("cfg_ai_sw_tts_desc"))
-        add_switch("enable_stt", self.lang_manager.get("cfg_ai_sw_stt"), self.lang_manager.get("cfg_ai_sw_stt_desc"))
-        add_switch("enable_web_search", self.lang_manager.get("cfg_ai_sw_web"), self.lang_manager.get("cfg_ai_sw_web_desc"))
-        add_switch("gamer_mode", self.lang_manager.get("cfg_ai_sw_gamer"), self.lang_manager.get("cfg_ai_sw_gamer_desc"))
-        add_switch("enable_safety_filters", self.lang_manager.get("cfg_ai_sw_safety"), self.lang_manager.get("cfg_ai_sw_safety_desc"))
-
-        self.load_ai_switches()
-
-    def load_ai_switches(self):
-        cfg = self._load_json_file("config.json")
-        ai_cfg = cfg.get("ai_config", {})
-        
-        for key, switch in self.ai_switches.items():
-            val = ai_cfg.get(key, False)
-            if key == "enable_chat" and key not in ai_cfg: val = True # Default True
-            if val: switch.select()
-            else: switch.deselect()
-
-    def save_ai_switches_instant(self):
-        cfg = self._load_json_file("config.json")
-        if "ai_config" not in cfg: cfg["ai_config"] = {}
-        for key, switch in self.ai_switches.items():
-            cfg["ai_config"][key] = bool(switch.get())
-        self._save_json_file("config.json", cfg)
-        if self.bot_process:
-            self.send_to_bot("CMD_RELOAD")
 
     def create_config_ai_settings_frame(self):
         frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -2921,8 +2472,14 @@ class MeowLauncher(ctk.CTk):
         self.progress_bar.pack(side="left", padx=(15, 0))
         self.progress_bar.set(0)
         
-        # Limpiar consolas
-        for console in [self.console_main, self.console_music, self.console_errors, self.console_ai]:
+        # Limpiar consolas (Lazy Loading Safe)
+        consoles_to_clean = []
+        if hasattr(self, "console_main"): consoles_to_clean.append(self.console_main)
+        if hasattr(self, "console_music"): consoles_to_clean.append(self.console_music)
+        if hasattr(self, "console_errors"): consoles_to_clean.append(self.console_errors)
+        if hasattr(self, "console_ai"): consoles_to_clean.append(self.console_ai)
+        
+        for console in consoles_to_clean:
             console.configure(state="normal")
             console.delete("0.0", "end")
             console.configure(state="disabled")
@@ -2996,7 +2553,7 @@ class MeowLauncher(ctk.CTk):
                 playing_prefix = self.lang_manager.get("sys_mus_playing_log").replace("{title}", "").strip()
                 if playing_prefix in line:
                     title = line.split(playing_prefix, 1)[1].strip()
-                    self.after(0, lambda t=title: self.lbl_now_playing.configure(text=f"{self.lang_manager.get('mus_lbl_now_playing_prefix')}{t}"))
+                    self.after(0, lambda t=title: self.lbl_now_playing.configure(text=f"{self.lang_manager.get('mus_lbl_now_playing_prefix')}{t}") if hasattr(self, "lbl_now_playing") else None)
 
                 # ═══ TERMINAL LIMPIA: solo líneas del propio bot (con emojis) o salidas print limpias ═══
                 # Regla: va a Terminal si la línea tiene un emoji propio del bot (🎵 🧠 ⚙️ 📥 📤 ✅ ❌ ⚠️ etc.)
@@ -3040,9 +2597,10 @@ class MeowLauncher(ctk.CTk):
         except: pass
 
     def log_to_console(self, text, target):
-        if target == "music": widget = self.console_music
-        elif target == "ai": widget = self.console_ai
-        else: widget = self.console_main
+        if target == "music" and hasattr(self, "console_music"): widget = self.console_music
+        elif target == "ai" and hasattr(self, "console_ai"): widget = self.console_ai
+        elif target == "main" and hasattr(self, "console_main"): widget = self.console_main
+        else: return
         self._write_to_widget(widget, text)
 
     def _write_to_widget(self, widget, text):
@@ -3073,6 +2631,7 @@ class MeowLauncher(ctk.CTk):
         self.send_to_bot(cmd)
 
     def update_queue_ui(self, queue_list):
+        if not hasattr(self, "queue_display"): return
         self.queue_display.configure(state="normal")
         self.queue_display.delete("0.0", "end")
         if not queue_list:
