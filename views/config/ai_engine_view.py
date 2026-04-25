@@ -6,6 +6,10 @@ import shutil
 from tkinter import messagebox
 from dotenv import set_key, dotenv_values
 
+from views.guides.google_guide_view import GoogleGuideView
+from views.guides.privacy_guide_view import PrivacyGuideView
+from views.guides.local_guide_view import LocalGuideView
+
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)
 else:
@@ -22,7 +26,7 @@ class AIEngineConfigFrame(ctk.CTkFrame):
         header_bar = ctk.CTkFrame(self, fg_color="transparent")
         header_bar.pack(fill="x", pady=(0, 20))
         ctk.CTkLabel(header_bar, text=self.controller.lang_manager.get("cfg_eng_title"), font=ctk.CTkFont(size=20, weight="bold"), text_color=self.controller.theme_manager.get("accent")).pack(side="left")
-        ctk.CTkButton(header_bar, text=self.controller.lang_manager.get("cfg_eng_btn_privacy"), height=28, fg_color="#331a20", hover_color=self.controller.theme_manager.get("red"), border_color=self.controller.theme_manager.get("red"), border_width=1, text_color=self.controller.theme_manager.get("red"), command=lambda: self.controller.show_frame("privacy_guide")).pack(side="right", padx=20)
+        ctk.CTkButton(header_bar, text=self.controller.lang_manager.get("cfg_eng_btn_privacy"), height=28, fg_color="#331a20", hover_color=self.controller.theme_manager.get("red"), border_color=self.controller.theme_manager.get("red"), border_width=1, text_color=self.controller.theme_manager.get("red"), command=lambda: self.controller.show_frame(PrivacyGuideView)).pack(side="right", padx=20)
 
         master_frame = ctk.CTkFrame(self, fg_color=self.controller.theme_manager.get("bg_card"), corner_radius=10, border_width=1, border_color=self.controller.theme_manager.get("border"))
         master_frame.pack(fill="x", padx=20, pady=(0, 15))
@@ -95,7 +99,7 @@ class AIEngineConfigFrame(ctk.CTkFrame):
                 messagebox.showwarning(self.controller.lang_manager.get("cfg_eng_warn_ollama_title"), self.controller.lang_manager.get("cfg_eng_warn_ollama_desc"))
                 
         ctk.CTkButton(install_frame, text=self.controller.lang_manager.get("cfg_eng_btn_install"), height=40, font=ctk.CTkFont(weight="bold"), fg_color=self.controller.theme_manager.get("bg_card"), hover_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("accent"), command=install_local_ai).pack(side="left", fill="x", expand=True, padx=(0, 5))
-        ctk.CTkButton(install_frame, text=self.controller.lang_manager.get("cfg_eng_btn_guide"), height=40, fg_color=self.controller.theme_manager.get("bg_card"), hover_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"), command=lambda: self.controller.show_frame("local_guide")).pack(side="right", fill="x", expand=True, padx=(5, 0))
+        ctk.CTkButton(install_frame, text=self.controller.lang_manager.get("cfg_eng_btn_guide"), height=40, fg_color=self.controller.theme_manager.get("bg_card"), hover_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"), command=lambda: self.controller.show_frame(LocalGuideView)).pack(side="right", fill="x", expand=True, padx=(5, 0))
 
     def build_cloud_tab(self):
         card = ctk.CTkFrame(self.tab_cloud, fg_color=self.controller.theme_manager.get("bg_card"), corner_radius=16, border_width=1, border_color=self.controller.theme_manager.get("border"))
@@ -120,7 +124,7 @@ class AIEngineConfigFrame(ctk.CTkFrame):
             ctk.CTkButton(row, text="?", width=28, height=28, fg_color=self.controller.theme_manager.get("bg_card"), hover_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"), command=lambda h=help_lbl: self.controller.toggle_help(h, "pack", fill="x", padx=(200, 0), pady=(0, 10))).pack(side="right", padx=(10, 0))
 
             if var_key == "GEMINI_API_KEY":
-                ctk.CTkButton(row, text=self.controller.lang_manager.get("cfg_eng_btn_get_key"), width=110, height=28, fg_color=self.controller.theme_manager.get("bg_card"), hover_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("accent"), font=ctk.CTkFont(size=11), command=lambda: self.controller.show_frame("google_guide")).pack(side="right", padx=(5, 0))
+                ctk.CTkButton(row, text=self.controller.lang_manager.get("cfg_eng_btn_get_key"), width=110, height=28, fg_color=self.controller.theme_manager.get("bg_card"), hover_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("accent"), font=ctk.CTkFont(size=11), command=lambda: self.controller.show_frame(GoogleGuideView)).pack(side="right", padx=(5, 0))
 
             entry = ctk.CTkEntry(row, width=350, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"), show="*")
             entry.pack(side="left", fill="x", expand=True, padx=(12, 0))

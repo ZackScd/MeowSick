@@ -3,6 +3,9 @@ import os
 import sys
 from dotenv import set_key, dotenv_values
 
+from views.guides.discord_guide_view import DiscordGuideView
+from views.guides.id_guide_view import IdGuideView
+
 if getattr(sys, 'frozen', False):
     BASE_DIR = os.path.dirname(sys.executable)
 else:
@@ -60,8 +63,9 @@ class GeneralConfigFrame(ctk.CTkFrame):
                 ctk.CTkLabel(help_frame, text=f"ℹ {help_txt}", text_color=self.controller.theme_manager.get("text_dim"), font=ctk.CTkFont(size=11), anchor="w").pack(side="left")
                 
                 # Enlace a guía de IDs si corresponde
-                if key in ["ADMIN_ID", "WELCOME_CHANNEL_ID"]:
-                    link_btn = ctk.CTkButton(help_frame, text=self.controller.lang_manager.get("cfg_gen_link_get_id"), width=90, height=20, fg_color="transparent", text_color=self.controller.theme_manager.get("accent"), font=ctk.CTkFont(size=11, underline=True), hover=False, command=lambda: self.controller.show_frame("id_guide"))
+                if key in ["ADMIN_ID", "WELCOME_CHANNEL_ID", "DISCORD_TOKEN"]:
+                    guide_target = DiscordGuideView if key == "DISCORD_TOKEN" else IdGuideView
+                    link_btn = ctk.CTkButton(help_frame, text=self.controller.lang_manager.get("cfg_gen_link_get_id"), width=90, height=20, fg_color="transparent", text_color=self.controller.theme_manager.get("accent"), font=ctk.CTkFont(size=11, underline=True), hover=False, command=lambda tgt=guide_target: self.controller.show_frame(tgt))
                     link_btn.configure(hover_color=self.controller.theme_manager.get("bg_card"))
                     link_btn.pack(side="left", padx=5)
 
