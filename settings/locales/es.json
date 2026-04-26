@@ -1,4 +1,5 @@
 {
+    "_TRANSLATOR_NOTE": "⚠️ NOTA IMPORTANTE: NO elimines ni alteres los emojis al principio de los textos (especialmente en las claves sys_*). El Launcher usa estos emojis (🎵, 🧠, ⚙️, etc.) como prefijos para filtrar y enviar los registros a la terminal correcta de la interfaz. Déjalos exactamente donde están.",
     "app_title": "MeowSick V3 - Panel de Control",
     "loading": "Cargando...",
     "sidebar_warning_title": "⚠️ ADVERTENCIA",
