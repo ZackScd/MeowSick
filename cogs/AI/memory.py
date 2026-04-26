@@ -4,6 +4,8 @@ import json
 import os
 import sys
 import asyncio
+import logging
+logger = logging.getLogger("Memory")
 from .utils import ai_manager
 from .identity import identity_manager
 from shared.config_manager import ConfigManager
@@ -146,7 +148,8 @@ class Memory(commands.Cog):
                     if "afinidad" in info: # Asegura que la respuesta contiene la clave necesaria.
                         current_ops[uid] = info # Sobrescribe la opinión del usuario con la nueva.
                 self.save_data(self.opiniones_file, current_ops) # Guarda el archivo actualizado.
-            except: pass # Ignora errores de parseo si la IA responde mal.
+            except Exception: 
+                logger.error("Error parseando respuesta de _task_update_opinions", exc_info=True)
 
     async def _task_update_self(self, msgs):
         """Tarea para que la IA reflexione sobre sí misma y actualice sus gustos y creencias."""
@@ -172,7 +175,8 @@ class Memory(commands.Cog):
                 current_self["opiniones"].update(new_ops) # Actualiza el diccionario existente con las nuevas.
                 
                 self.save_data(self.autoconcepto_file, current_self) # Guarda el archivo actualizado.
-            except: pass # Ignora errores.
+            except Exception: 
+                logger.error("Error parseando respuesta de _task_update_self", exc_info=True)
 
     async def _task_extract_facts(self, msgs):
         """Tarea para extraer hechos biográficos y atemporales sobre los usuarios."""
@@ -202,7 +206,8 @@ class Memory(commands.Cog):
                 if cambios: # Si se añadió al menos un hecho nuevo...
                     self.save_data(self.memoria_file, current_mem) # ...guarda el archivo.
                     print(self.bot.lang.get("sys_ai_mem_upd")) # Y lo notifica en consola.
-            except: pass # Ignora errores.
+            except Exception: 
+                logger.error("Error parseando respuesta de _task_extract_facts", exc_info=True)
 
     def add_to_buffer(self, msg_formatted):
         """

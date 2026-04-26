@@ -63,6 +63,15 @@ def create_clean_dist_files():
     with open(os.path.join(settings_dir, ".env"), "w", encoding="utf-8") as f:
         f.write(env_content)
 
+    # 1.1a. Copiar archivos de idiomas y temas visuales
+    if os.path.exists(os.path.join("settings", "locales")):
+        shutil.copytree(os.path.join("settings", "locales"), os.path.join(settings_dir, "locales"))
+        
+    if os.path.exists("themes"):
+        shutil.copytree("themes", os.path.join(BUILD_TEMP_DIR, "themes"))
+        
+    os.makedirs(os.path.join(BUILD_TEMP_DIR, "logs"), exist_ok=True)
+
     # 1.1b. Creación de outputs.json con mensajes genéricos por defecto
     outputs_content = {
         "welcome_message": "Meow... :3",
@@ -95,6 +104,8 @@ def create_clean_dist_files():
 
     # 1.1c. Creación de config.json base (Asegura el prefijo ! y módulos activos)
     config_content = {
+        "language": "es",
+        "theme": "dark",
         "prefix": "!",
         "modules": {
             "music": True,
@@ -248,10 +259,15 @@ def build_executable():
         "--hidden-import=faster_whisper",
         "--hidden-import=bs4",
         "--hidden-import=psutil",
+        "--hidden-import=shared",
+        "--hidden-import=views",
         "--collect-all=yt_dlp",
         "--collect-all=discord",
         "--collect-all=nacl",
         "--collect-all=faster_whisper",
+        "--collect-all=shared",
+        "--collect-all=views",
+        "--collect-all=themes",
         "launcher.py"
     ]
     subprocess.run(command)
@@ -275,6 +291,17 @@ def package_distribution():
         if os.path.exists(dest_settings): shutil.rmtree(dest_settings)
         shutil.copytree(clean_settings_src, dest_settings)
         print("  ✅ Configuraciones limpias (settings/) copiadas.")
+
+    # 3.1b. Migración de Temas y creación de Logs en la Distribución
+    clean_themes_src = os.path.join(BUILD_TEMP_DIR, "themes")
+    if os.path.exists(clean_themes_src):
+        dest_themes = os.path.join(dist_dir, "themes")
+        if os.path.exists(dest_themes): shutil.rmtree(dest_themes)
+        shutil.copytree(clean_themes_src, dest_themes)
+        print("  ✅ Temas visuales (themes/) copiados.")
+        
+    os.makedirs(os.path.join(dist_dir, "logs"), exist_ok=True)
+    print("  ✅ Directorio de registros (logs/) creado.")
 
     # 3.2. Migración del directorio de memorias LIMPIO desde la carpeta temporal
     clean_memory_src = os.path.join(BUILD_TEMP_DIR, "cogs", "AI", "memory")

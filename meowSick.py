@@ -8,6 +8,7 @@ import threading
 import shutil
 import signal
 import logging
+from logging.handlers import RotatingFileHandler
 import socket
 from dotenv import load_dotenv
 from shared.config_manager import ConfigManager
@@ -26,10 +27,12 @@ RUNTIME_DIR = sys._MEIPASS if getattr(sys, 'frozen', False) else BASE_DIR
 
 # Define rutas absolutas para directorios clave, asegurando consistencia.
 SETTINGS_DIR = os.path.join(BASE_DIR, "settings")
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
 COGS_DIR = os.path.join(RUNTIME_DIR, "cogs") 
 
 # Asegura la existencia de los directorios necesarios en tiempo de ejecución.
 os.makedirs(SETTINGS_DIR, exist_ok=True)
+os.makedirs(LOGS_DIR, exist_ok=True)
 # En modo script, esto asegura que la carpeta 'cogs' exista si se borra accidentalmente.
 # En modo ejecutable (.exe), esta operación es inocua sobre el directorio temporal _MEIPASS,
 # que es de solo lectura pero ya contiene los cogs empaquetados por el compilador.
@@ -238,7 +241,8 @@ class MeowSickBot(commands.Bot):
         for vc in self.voice_clients:
             try:
                 await vc.disconnect(force=True)
-            except: pass
+            except Exception: 
+                logging.getLogger("Daemon").error("Error al desconectar el cliente de voz durante el apagado", exc_info=True)
         
         # Llama al método `close` original para manejar la desconexión del WebSocket de Discord.
         await super().close()
@@ -348,10 +352,14 @@ def prevent_zombies():
 async def main():
     """Función principal asíncrona que inicializa y ejecuta el bot."""
     # 👁️ INYECCIÓN DE SISTEMA RAW: Imprime todo el tráfico de red, HTTP y WebSockets sin censura.
+    log_file = os.path.join(LOGS_DIR, "system.log")
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        stream=sys.stdout,
+        handlers=[
+            RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=3, encoding="utf-8"),
+            logging.StreamHandler(sys.stdout)
+        ],
         force=True
     )
 

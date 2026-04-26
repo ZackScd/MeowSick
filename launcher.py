@@ -13,6 +13,8 @@ import os
 import threading
 import json
 import time
+import logging
+from logging.handlers import RotatingFileHandler
 from tkinter import messagebox
 from PIL import Image
 from dotenv import set_key, dotenv_values
@@ -48,6 +50,20 @@ else:
 # Rutas relativas a la carpeta de usuario
 SETTINGS_DIR = os.path.join(BASE_DIR, "settings")
 ENV_PATH = os.path.join(SETTINGS_DIR, ".env")
+
+# --- CONFIGURACIÓN DE LOGGING ---
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        RotatingFileHandler(os.path.join(LOGS_DIR, "system.log"), maxBytes=5*1024*1024, backupCount=3, encoding="utf-8"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger("Launcher")
 
 # Configuración global del motor gráfico
 ctk.set_appearance_mode("Dark") 
@@ -345,7 +361,7 @@ class MeowLauncher(ctk.CTk):
         """Ejecuta los callbacks inyectados por las Vistas para refrescar la UI forzosamente."""
         for func in self.ai_reload_functions.values():
             try: func()
-            except: pass
+            except Exception: logger.error("Error al recargar archivos de IA en la vista", exc_info=True)
 
     # --- HELPER JSON ---
     def _load_json_file(self, filename):
@@ -479,7 +495,8 @@ class MeowLauncher(ctk.CTk):
                             pct = float(parts[0])
                             msg = parts[1]
                             self.after(0, lambda p=pct, m=msg: self._update_progress(p, m))
-                    except: pass
+                    except Exception: 
+                        logger.error("Error procesando IPC_PROGRESS", exc_info=True)
                     continue  # No mostrar en ninguna consola visual
 
                 # 1. PROTOCOLO IPC: Actualizaciones de la cola musical del servidor activo.
@@ -488,7 +505,8 @@ class MeowLauncher(ctk.CTk):
                         json_str = line.split("IPC_QUEUE_UPDATE:", 1)[1].strip()
                         data = json.loads(json_str)
                         self.after(0, lambda d=data: self.update_queue_ui(d))
-                    except: pass
+                    except Exception: 
+                        logger.error("Error procesando IPC_QUEUE_UPDATE", exc_info=True)
                     continue  # No mostrar en consola
 
                 # Capturar canción actual para actualizar UI (Dinámico para cualquier idioma)
@@ -513,7 +531,9 @@ class MeowLauncher(ctk.CTk):
                 if any(m in line for m in ("🧠", "📥", "📤", "⚙️", "📝", "[IDENTITY]")):
                     self.after(0, lambda l=line: self.log_to_console(l, "ai"))
 
-            except: break
+            except Exception: 
+                logger.error("Error de lectura en I/O de bot_process", exc_info=True)
+                break
         
         # Proceso terminado
         self.bot_process = None
@@ -540,7 +560,7 @@ class MeowLauncher(ctk.CTk):
             music_frame = self.frames.get("MusicFrame")
             lbl = getattr(self, "lbl_now_playing", None) or (getattr(music_frame, "lbl_now_playing", None) if music_frame else None)
             if lbl: lbl.configure(text=self.lang_manager.get("mus_lbl_now_playing_empty"))
-        except: pass
+        except Exception: logger.error("Error reiniciando UI de música post-apagado", exc_info=True)
 
     def log_to_console(self, text, target):
         """Enrutador de textos hacia las instancias CtkTextbox específicas."""
@@ -565,7 +585,7 @@ class MeowLauncher(ctk.CTk):
             widget.insert("end", text)
             widget.see("end")
             widget.configure(state="disabled")
-        except: pass
+        except Exception: logger.error("Error inyectando texto a CtkTextbox", exc_info=True)
 
     def send_to_bot(self, text):
         """
@@ -576,7 +596,7 @@ class MeowLauncher(ctk.CTk):
             try:
                 self.bot_process.stdin.write(text + "\n")
                 self.bot_process.stdin.flush()
-            except: pass
+            except Exception: logger.error("Error enviando comando IPC al bot", exc_info=True)
 
     # --- FUNCIONES DE MÚSICA ---
     def update_now_playing_ui(self, title):
@@ -614,7 +634,7 @@ class MeowLauncher(ctk.CTk):
                 button.configure(text=self.lang_manager.get("mod_btn_on"), fg_color=self.theme_manager.get("accent"), text_color=self.theme_manager.get("bg_dark"))
             else:
                 button.configure(text=self.lang_manager.get("mod_btn_off"), fg_color=self.theme_manager.get("bg_dark"), text_color=self.theme_manager.get("red"))
-        except: pass
+        except Exception: logger.error("Error actualizando el estado del botón del módulo", exc_info=True)
 
     def toggle_module(self, module_name, button):
         """
@@ -649,7 +669,7 @@ class MeowLauncher(ctk.CTk):
             self.stop_bot()
             try:
                 self.bot_process.kill() # Ejecución Forzosa: Mata al proceso zombie al instante
-            except: pass
+            except Exception: logger.error("Error forzando la terminación del proceso zombie", exc_info=True)
             self.destroy()
         else:
             self.destroy()

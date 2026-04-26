@@ -1,6 +1,8 @@
 import os
 import sys
 import json
+import logging
+logger = logging.getLogger("Identity")
 from shared.language_manager import LanguageManager
 from shared.config_manager import ConfigManager
 
@@ -77,7 +79,8 @@ class IdentityModule:
         try:
             with open(self.identity_file, "r", encoding="utf-8") as f: identidad = f.read() # Lee texto de personalidad
             with open(self.guidelines_file, "r", encoding="utf-8") as f: guidelines = f.read() # Lee texto de reglas
-        except: pass
+        except Exception: 
+            logger.error("Error leyendo archivos de identidad y directrices", exc_info=True)
         
         config_path = os.path.abspath(os.path.join(self.base_path, "..", "..", "..", "settings", "config.json"))
         cfg = ConfigManager.load_json(config_path, use_lock=True) or {}

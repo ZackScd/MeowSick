@@ -23,12 +23,14 @@ Esta sección está destinada a las personas que solo quieren ejecutar el bot en
 
 ## 🚀 Instalación Rápida
 
-1. Ejecuta `MeowSick.exe` (o `python launcher.py` si estás en el código fuente).
-2. Ve a la pestaña **Configuración > 🔐 Credenciales**.
-3. Pega tu **Token de Discord** (Puedes usar el botón "Guía" en la app para saber cómo obtenerlo).
-4. Pega tu **Google AI Key (Gemini)** en caso de querer usar el motor de IA (Obtenida de Google AI Studio, es gratuita).
-5. Opcional, pero recomendado: Añade **tu ID de discord** en la configuración general.
-6. Guarda los cambios, ve a la pestaña **Dashboard** y haz clic en **▶ Iniciar Bot**.
+1. Ejecuta el archivo portable `MeowSick.exe` (o `python launcher.py` si estás ejecutando desde el código fuente).
+2. En el panel lateral, ve a **Configuración > ⚙ General**.
+3. Pega tu **Token de Discord** (Usa el botón "Guía" en la app para saber cómo obtenerlo).
+4. Opcional, pero recomendado: Añade **tu ID de Discord (Admin ID)** en la configuración general para que el bot te reconozca como su dueño/creador.
+5. Ve a **Configuración > 🧠 Ajustes IA > 🧠 Núcleo Cognitivo**. Elige tu motor de IA:
+   - **Local (Privado):** Requiere descargar e instalar Ollama en tu PC. Sigue la guía integrada en el Launcher.
+   - **Nube (Google Gemini):** Pega tu **Google AI Key** (Obtenida de Google AI Studio, gratuita).
+6. Guarda los cambios, vuelve a la pestaña **Dashboard** y haz clic en **▶ Iniciar Bot**.
 
 ## 🎮 Comandos Disponibles
 
@@ -45,24 +47,26 @@ MeowSick funciona de manera orgánica. **No necesitas comandos** para hablarle e
     *   Haz clic en **🎙️ Hablar**, habla por tu micrófono en el canal de voz de Discord.
     *   Haz clic de nuevo para detener. La IA procesará tu audio y te responderá hablando.
 
-### 🎵 Música
+### 🎵 Música (YouTube Optimizado)
 *   `!play [canción o URL]`: Busca en YouTube y reproduce la canción.
+*   `!next [canción o URL]`: Inserta una canción al inicio de la cola (sonará justo después de la actual).
 *   `!stop`: Detiene la música y vacía la cola.
 *   `!skip`: Salta a la siguiente canción.
 *   `!pause` / `!resume`: Pausa o reanuda la música.
-*   `!list`: Muestra la cola actual de canciones.
+*   `!list`: Muestra la cola actual de canciones (con botones interactivos de paginación).
 *   `!shuffle`: Mezcla el orden de las canciones en la cola.
 *   `!leave`: Desconecta al bot del canal de voz.
 *   `!playlist` / `!pls`: Carga automáticamente tu playlist favorita (configurable desde el Launcher en Ajustes de Música).
 
-## ⚙️ Personalización en el Launcher
-El Panel de Control de MeowSick te permite alterar su "cerebro" en tiempo real desde la pestaña **Configuración > 🧠 IA General**:
-*   **Editores de Memoria:** Puedes forzar a la IA a que le "guste" o "odie" a un usuario específico editando su nivel de Afinidad (-100 a 100).
-*   **Personalidad:** Puedes cambiar quién es en la pestaña *Identidad*. ¿Quieres que sea un pirata sarcástico o una sirvienta amable? Solo edita el texto y guarda.
-*   **Estados de Ánimo:** Crea nuevas emociones para que la IA transite por ellas dependiendo de cómo la traten los usuarios.
+## ⚙️ Personalización en el Launcher (V3)
+El Panel de Control de MeowSick cuenta con una arquitectura modular que te permite alterar su "cerebro" en tiempo real. En el menú lateral encontrarás:
+
+*   **Editores de Memoria (Pestaña 🧠 AI):** Herramientas visuales para forzar a la IA a que le "guste" o "odie" a un usuario (Relaciones), editar qué cosas sabe de sí misma (Autoconcepto), reescribir su Personalidad Base, o ajustar sus Rangos de Afinidad matemáticos.
+*   **🎭 Personalidades y Reseteo:** Un menú avanzado que te permite cargar "Personalidades Prefabricadas" con un solo clic. También incluye la herramienta de **Restablecimiento a Fábrica granular**, que te permite borrar partes específicas de la memoria (ej. borrar los recuerdos de los usuarios, pero conservar la identidad).
+*   **Módulos en Caliente:** Desde la pestaña "Módulos", puedes apagar y encender submódulos enteros (Visión, Análisis de Emociones, Música) sin tener que reiniciar el bot, aplicando los cambios al instante.
 
 ## 🛡️ Privacidad y Responsabilidad Legal
-*   **Zero-Data-Retention:** Se recomienda encarecidamente a los usuarios utilizar la instalación de modelos locales (cuando esté disponible) para garantizar una privacidad absoluta de los chats de su servidor al evitar enviar datos a la nube.
+*   **Zero-Data-Retention:** Se recomienda encarecidamente a los usuarios utilizar la instalación de modelos locales para garantizar una privacidad absoluta de los chats de su servidor al evitar enviar datos a la nube.
 *   **Aislamiento Total:** El desarrollador original **NO** recopila, monitorea, ni tiene acceso a NINGÚN tipo de dato, historial, Token o API Key de los usuarios. Cada instancia de MeowSick funciona de manera 100% aislada en la máquina de quien la ejecuta.
 *   **Responsabilidad:** El creador se deslinda de cualquier uso indebido, malicioso o ilegal que se le dé a esta aplicación. La descarga, configuración y moderación del bot recaen puramente en la responsabilidad del usuario final.
 
@@ -101,18 +105,47 @@ MeowSick/
 ├── README.md                   # Documentación principal
 ├── ROADMAP.md                  # Plan de refactorización y hoja de ruta
 ├── CHANGELOG.md                # Registro de cambios y versiones
-├── views/                      # [Vistas UI] Archivos modulares de la interfaz gráfica
-│   ├── dashboard_view.py
-│   ├── modules_view.py
-│   ├── music/                  # Vistas específicas del reproductor
-│   ├── config/                 # Vistas de configuración (General, IA, Música)
+├── shared/                     # [Módulos Compartidos] Lógica reutilizable (D.R.Y)
+│   ├── config_manager.py       # Gestor centralizado de I/O para archivos JSON (Filelocks)
+│   ├── theme_manager.py        # Inyección dinámica de paletas de colores
+│   └── language_manager.py     # Sistema de internacionalización (i18n)
+├── views/                      # [Vistas UI] Archivos modulares de la interfaz gráfica (Lazy Loading)
+│   ├── dashboard_view.py       # Vista principal (Dashboard)
+│   ├── modules_view.py         # Panel de gestión de submódulos
+│   ├── music/                  # Vistas específicas del reproductor musical
+│   │   └── main_view.py
+│   ├── config/                 # Vistas de configuración y ajustes
+│   │   ├── general_view.py     # Ajustes generales (Tokens, IDs)
+│   │   ├── music_view.py       # Ajustes musicales (Mensajes, playlists)
+│   │   ├── ai_general_view.py  # Control de subprocesos IA
+│   │   ├── ai_settings_view.py # Filtros y límites de contexto
+│   │   ├── ai_engine_view.py   # Selección de motor (Nube vs Local)
+│   │   └── ai_presets_view.py  # Personalidades prefabricadas y Factory Reset
 │   ├── ai/                     # Editores visuales de Memoria y Personalidad
-│   └── guides/                 # Interfaces de las guías de ayuda
+│   │   ├── identity_editor.py
+│   │   ├── moods_editor.py
+│   │   ├── moods_history_editor.py
+│   │   ├── users_editor.py
+│   │   ├── memory_editor.py
+│   │   ├── opinions_editor.py
+│   │   ├── ranges_editor.py
+│   │   ├── self_editor.py
+│   │   └── prompts_editor.py
+│   └── guides/                 # Interfaces de las guías de ayuda integradas
+│       ├── discord_guide_view.py
+│       ├── google_guide_view.py
+│       ├── id_guide_view.py
+│       ├── privacy_guide_view.py
+│       └── local_guide_view.py
 ├── settings/                   # [Datos de Usuario] Configuraciones locales
 │   ├── config.json             # Ajustes globales, estados de los toggles y límites
 │   ├── outputs.json            # Textos personalizables de los mensajes del bot
 │   ├── .env                    # Tokens y API Keys (Discord, Google AI, etc.)
 │   └── locales/                # Sistema de internacionalización (es.json, en.json)
+├── themes/                     # [Temas Visuales] Paletas de colores dinámicas
+│   └── dark.json               # Tema oscuro base
+├── logs/                       # [Registros del Sistema]
+│   └── system.log              # Log con rotación automática (RotatingFileHandler)
 ├── cogs/                       # [Backend] Módulos operacionales del Bot
 │   ├── help.py                 # Comando de ayuda nativo
 │   ├── music.py                # Motor asíncrono de audio, colas y descargas (yt-dlp)
@@ -122,6 +155,8 @@ MeowSick/
 │       ├── evolution.py        # Sistema Límbico (Análisis de humor pasivo y decaimiento)
 │       ├── identity.py         # Gestor dinámico de personalidad e inyección de contexto
 │       ├── utils.py            # Módem de red y llamadas a API (Gemini / Ollama)
+│       ├── tts_manager.py      # [Abstracción] Motores de Texto a Voz (Edge-TTS, Piper, etc.)
+│       ├── stt_manager.py      # [Abstracción] Motores de Voz a Texto (Whisper, Gemini Audio)
 │       └── memory/             # [Base de Datos RAG Local] Archivos dinámicos de la IA
 │           ├── identity.txt            # Quién es la IA
 │           ├── guidelines.txt          # Reglas estrictas de comportamiento
@@ -141,16 +176,21 @@ MeowSick/
 
 ---
 
-## 🏗️ Arquitectura del Sistema (IPC)
+## 🏗️ Arquitectura del Sistema (MVC e IPC)
 
-El programa opera mediante un paradigma de **Multiprocesamiento (IPC - Inter-Process Communication)**, dividiendo el sistema en dos piezas principales que se comunican entre sí en tiempo real:
+El programa ha sido refactorizado bajo un estricto patrón **MVC (Modelo-Vista-Controlador)** en su interfaz, y un paradigma avanzado de **Multiprocesamiento (IPC)** para su conexión bidireccional con el bot:
 
-1. **Proceso Padre (Launcher - `launcher.py`):** Dibuja la interfaz gráfica. Modifica archivos `.json` de configuración y memoria, y genera subprocesos Popen.
-2. **Proceso Hijo (Daemon - `meowSick.py`):** Se conecta al WebSocket de Discord. Se ejecuta 100% asíncrono (`asyncio`).
+### 1. Patrón MVC (Interfaz Gráfica)
+- **Modelo (Managers & JSONs):** Los gestores en `shared/` (`config_manager.py`, `language_manager.py`, `theme_manager.py`) actúan como la única fuente de verdad, aplicando bloqueos (`filelock`) para prevenir corrupción de datos en concurrencia.
+- **Vista (Views):** Componentes aislados en la carpeta `views/` (ej. `DashboardFrame`, `IdentityEditor`). Se instancian en RAM mediante **Carga Perezosa (Lazy Loading)** solo cuando el usuario accede a ellos, eliminando cuellos de botella en el arranque y el *flickering* de redibujado.
+- **Controlador (Launcher):** `launcher.py` ha sido reducido a un enrutador ligero. Su único trabajo es instanciar los Managers, inyectarlos dinámicamente en las Vistas y gestionar el ciclo de vida del subproceso del bot.
 
-**¿Cómo se comunican?**
-- **Launcher -> Bot:** El Launcher inyecta comandos en la tubería `stdin`. El bot posee una corrutina `console_listener` que usa `loop.run_in_executor` para leer órdenes asíncronamente y disparar recargas o comandos internos.
-- **Bot -> Launcher:** El Bot imprime variables JSON marcadas en consola (`stdout`). El Launcher las captura para actualizar elementos visuales en tiempo real (como la lista de canciones actual).
+### 2. Comunicación entre Procesos (IPC JSON Estructurado)
+Al ser dos procesos separados (El Launcher síncrono vs el Daemon de Discord asíncrono), se comunican a través de tuberías estándar (`stdin`/`stdout`) utilizando un robusto protocolo de **JSON Estructurado con Prefijo de Canal**:
+- **Launcher -> Bot:** Envía cargas útiles estructuradas para ejecutar acciones. Ejemplo: `IPC>>{"type": "command", "name": "music_play", "payload": {"query": "canción"}}`.
+- **Bot -> Launcher:** Emite eventos de estado en tiempo real. Ejemplo: `IPC>>{"type": "event", "name": "progress_update", "payload": {"percent": 0.5}}`.
+
+Este prefijo único (`IPC>>`) aísla la comunicación IPC de cualquier otro registro, log o texto emitido por el sistema, haciéndolo 100% a prueba de fallos silenciosos.
 
 ---
 
@@ -182,7 +222,9 @@ El procesamiento de cada mensaje sigue un riguroso ciclo de vida asíncrono que 
 ### 1. Conciencia Frontal y Multimodalidad (`core.py`)
 Es el director de orquesta. 
 - **Visión:** Intercepta `message.attachments`. Mide el peso límite configurado, descarga el binario a la RAM vía `att.read()`, lo codifica en Base64 y lo inyecta como `inlineData` en el payload de Google.
-- **Voz (STT/TTS):** Genera un `WaveSink` filtrado por usuario (`voice_recv.UserFilter`) aislando el audio emitido en Discord. Envía ese WAV en Base64 a la API de Gemini 1.5. Cuando Gemini responde, lanza un subproceso asíncrono con `edge_tts` para descargar un `.mp3` temporal y enrutarlo al canal con `FFmpeg`.
+- **Voz (STT/TTS Abstraídos):** Implementa gestores independientes e intercambiables (`tts_manager.py` y `stt_manager.py`):
+  - **Escucha (STT):** Aisla el audio con un `WaveSink` filtrado por usuario. Procesa el `.wav` localmente (usando `faster-whisper`) o en la nube (Gemini Audio) según la configuración.
+  - **Habla (TTS):** Recibe el texto generado y lo renderiza, permitiendo alternar en caliente entre motores en la nube de alta fidelidad (Edge-TTS) o motores offline 100% privados y ultrarrápidos (Piper TTS).
 - **Búsqueda Web:** Posee un selector algorítmico. Puede delegar la búsqueda al ecosistema nativo de Google (`tools: googleSearch`) o realizar scraping anónimo local inyectando sumarios de duckduckgo (`DDGS`) al prompt principal de contexto.
 
 ### 2. Módem de Comunicaciones (`utils.py`)
