@@ -50,14 +50,12 @@ class IdentityModule:
                 
         self.rangos_file = os.path.join(self.base_path, "afinidad_rangos.json") # Base de datos de escalas emocionales
         if not os.path.exists(self.rangos_file): 
-            # Si no hay rangos configurados, inyectamos una escala de odio-amor por defecto
-            defaults = [
-                {"min": -100, "max": -50, "etiqueta": "Odio", "descripcion": "Este usuario te cae pésimo. Sé cortante, sarcástica o ignóralo."},
-                {"min": -49, "max": -11, "etiqueta": "Molesto", "descripcion": "Te irrita su presencia. Mantén las distancias y responde con desgano."},
-                {"min": -10, "max": 10, "etiqueta": "Neutral", "descripcion": "Te es indiferente. Trátalo de forma casual y normal."},
-                {"min": 11, "max": 49, "etiqueta": "Amigable", "descripcion": "Te cae bien. Eres más abierta y disfrutas hablar con él."},
-                {"min": 50, "max": 100, "etiqueta": "Cercano", "descripcion": "Le tienes mucho aprecio o cariño. Sé dulce y protectora."}
-            ]
+            try:
+                import build
+                defaults = build.DEFAULT_RANGES
+            except ImportError:
+                # Respaldo si el build por alguna razón no está accesible
+                defaults = [{"min": -100, "max": -50, "etiqueta": "Odio", "descripcion": "Cortante."}, {"min": -10, "max": 10, "etiqueta": "Neutral", "descripcion": "Normal."}, {"min": 50, "max": 100, "etiqueta": "Cercano", "descripcion": "Dulce."}]
             ConfigManager.save_json(self.rangos_file, defaults, use_lock=False)
 
     def _load_users(self):

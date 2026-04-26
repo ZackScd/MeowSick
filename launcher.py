@@ -27,7 +27,7 @@ from views.config.music_view import MusicConfigFrame
 from views.config.ai_general_view import AIGeneralConfigFrame
 from views.config.ai_settings_view import AISettingsConfigFrame
 from views.config.ai_engine_view import AIEngineConfigFrame
-from views.config.ai_presets_view import AIPresetsConfigFrame
+from views.config.ai_amnesia_view import AIAmnesiaConfigFrame
 from views.ai.identity_editor import IdentityEditor
 from views.ai.moods_editor import MoodsEditor
 from views.ai.users_editor import UsersEditor
@@ -244,15 +244,7 @@ class MeowLauncher(ctk.CTk):
         # 2. Separador Superior
         ctk.CTkFrame(self.nav_container, height=2, fg_color=self.theme_manager.get("border")).pack(side="top", fill="x", padx=20, pady=10)
 
-        # 3. Sección Inferior (Credenciales)
-        bottom_frame = ctk.CTkFrame(self.nav_container, fg_color="transparent")
-        bottom_frame.pack(side="bottom", fill="x")
-        ctk.CTkButton(bottom_frame, text=self.lang_manager.get("nav_ai_engines"), command=lambda: self.show_frame(AIEngineConfigFrame), **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
-
-        # 4. Separador Inferior
-        ctk.CTkFrame(self.nav_container, height=2, fg_color=self.theme_manager.get("border")).pack(side="bottom", fill="x", padx=20, pady=10)
-        
-        # 5. Lista de Módulos (Config)
+        # 3. Lista de Módulos (Config)
         scroll_mods = ctk.CTkScrollableFrame(
             self.nav_container, 
             fg_color="transparent", 
@@ -290,10 +282,11 @@ class MeowLauncher(ctk.CTk):
         scroll_mods = ctk.CTkScrollableFrame(self.nav_container, fg_color="transparent", corner_radius=0, scrollbar_button_color=self.theme_manager.get("bg_sidebar"), scrollbar_button_hover_color=self.theme_manager.get("bg_sidebar"))
         scroll_mods.pack(side="top", fill="both", expand=True)
 
+        ctk.CTkButton(scroll_mods, text=self.lang_manager.get("nav_ai_engines"), command=lambda: self.show_frame(AIEngineConfigFrame), **btn_opts).pack(padx=(12, 0), pady=6, fill="x")
         ctk.CTkButton(scroll_mods, text=self.lang_manager.get("nav_ai_general_settings"), command=lambda: self.show_frame(AISettingsConfigFrame), **btn_opts).pack(padx=(12, 0), pady=6, fill="x")
         ctk.CTkButton(scroll_mods, text=self.lang_manager.get("nav_ai_affinity_ranges"), command=lambda: self.show_frame(RangesEditor), **btn_opts).pack(padx=(12, 0), pady=6, fill="x")
         ctk.CTkButton(scroll_mods, text=self.lang_manager.get("nav_ai_internal_prompts"), command=lambda: self.show_frame(PromptsEditor), **btn_opts).pack(padx=(12, 0), pady=6, fill="x")
-        ctk.CTkButton(scroll_mods, text=self.lang_manager.get("nav_ai_presets", "🎭 Personalidades"), command=lambda: self.show_frame(AIPresetsConfigFrame), **btn_opts).pack(padx=(12, 0), pady=6, fill="x")
+        ctk.CTkButton(scroll_mods, text=self.lang_manager.get("nav_ai_amnesia"), command=lambda: self.show_frame(AIAmnesiaConfigFrame), **btn_opts).pack(padx=(12, 0), pady=6, fill="x")
 
     def open_config_ai_menu(self):
         self.render_config_ai_sidebar()
@@ -335,7 +328,6 @@ class MeowLauncher(ctk.CTk):
         # 4. Botones de Acción (Anclados al fondo)
         bottom_frame = ctk.CTkFrame(self.nav_container, fg_color="transparent")
         bottom_frame.pack(side="bottom", fill="x")
-        ctk.CTkButton(bottom_frame, text=self.lang_manager.get("nav_ai_amnesia"), command=self.open_amnesia_dialog, fg_color="#331a20", hover_color=self.theme_manager.get("red"), text_color=self.theme_manager.get("red"), height=36, corner_radius=8).pack(padx=(12, 16), pady=(6, 0), fill="x")
         ctk.CTkButton(bottom_frame, text=self.lang_manager.get("nav_ai_reload_files"), command=self.reload_all_ai_files, **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
 
         # 5. Separador Inferior (Empaquetado DESPUÉS para que quede arriba del botón)
@@ -348,67 +340,6 @@ class MeowLauncher(ctk.CTk):
     def exit_ai_menu(self):
         self.render_main_sidebar()
         self.show_frame(DashboardFrame)
-
-    def open_amnesia_dialog(self):
-        """
-        Sistema de Reseteo (Amnesia Selectiva).
-        Proporciona un modal destructivo con lógica granulada para re-inicializar el RAG JSON.
-        """
-        dialog = ctk.CTkToplevel(self)
-        dialog.title(self.lang_manager.get("dlg_amnesia_title"))
-        dialog.geometry("400x450")
-        dialog.configure(fg_color=self.theme_manager.get("bg_dark"))
-        dialog.transient(self)
-        dialog.grab_set()
-        
-        ctk.CTkLabel(dialog, text=self.lang_manager.get("dlg_amnesia_header"), font=ctk.CTkFont(size=18, weight="bold"), text_color=self.theme_manager.get("red")).pack(pady=(20, 10))
-        ctk.CTkLabel(dialog, text=self.lang_manager.get("dlg_amnesia_desc"), text_color=self.theme_manager.get("text_dim"), justify="center").pack(pady=(0, 15))
-        
-        form = ctk.CTkFrame(dialog, fg_color="transparent")
-        form.pack(fill="both", expand=True, padx=30)
-        
-        chk_vars = {}
-        options = [
-            ("identity", self.lang_manager.get("dlg_amnesia_opt_id")), 
-            ("users", self.lang_manager.get("dlg_amnesia_opt_users")), 
-            ("memory", self.lang_manager.get("dlg_amnesia_opt_mem")), 
-            ("opinions", self.lang_manager.get("dlg_amnesia_opt_opi")), 
-            ("moods", self.lang_manager.get("dlg_amnesia_opt_moods")), 
-            ("self", self.lang_manager.get("dlg_amnesia_opt_self"))
-        ]
-        for key, text in options:
-            var = ctk.BooleanVar(value=False)
-            chk = ctk.CTkCheckBox(form, text=text, variable=var, text_color=self.theme_manager.get("text"), checkbox_height=20, checkbox_width=20, fg_color=self.theme_manager.get("red"), hover_color="#c5536b")
-            chk.pack(anchor="w", pady=8)
-            chk_vars[key] = var
-            
-        def apply_amnesia():
-            mem_dir = os.path.join(BASE_DIR, "cogs", "AI", "memory")
-            try:
-                if chk_vars["identity"].get():
-                    with open(os.path.join(mem_dir, "identity.txt"), "w", encoding="utf-8") as f: f.write("Eres un asistente virtual. Tienes tu propia personalidad, responde de forma natural y conversacional.")
-                    with open(os.path.join(mem_dir, "guidelines.txt"), "w", encoding="utf-8") as f: f.write("1. Sé breve.\n2. No uses emojis excesivamente.")
-                if chk_vars["users"].get():
-                    ConfigManager.save_json(os.path.join(mem_dir, "known_users.json"), {}, use_lock=False)
-                if chk_vars["memory"].get():
-                    ConfigManager.save_json(os.path.join(mem_dir, "memoria.json"), {}, use_lock=False)
-                if chk_vars["opinions"].get():
-                    ConfigManager.save_json(os.path.join(mem_dir, "opiniones.json"), {}, use_lock=False)
-                if chk_vars["self"].get():
-                    ConfigManager.save_json(os.path.join(mem_dir, "autoconcepto.json"), {"gustos": [], "opiniones": {}}, use_lock=False)
-                if chk_vars["moods"].get():
-                    ConfigManager.save_json(os.path.join(mem_dir, "estado_animo.json"), {"estado_animo": "Neutral: Comportamiento por defecto."}, use_lock=False)
-                    ConfigManager.save_json(os.path.join(mem_dir, "historial_estados.json"), [], use_lock=False)
-                    ConfigManager.save_json(os.path.join(mem_dir, "estados_posibles.json"), ["Neutral: Estoy tranquila, existiendo.", "Feliz: Me siento bien, contenta."], use_lock=False)
-                self.reload_all_ai_files()
-                messagebox.showinfo(self.lang_manager.get("dlg_amnesia_msg_ok_title"), self.lang_manager.get("dlg_amnesia_msg_ok"))
-                dialog.destroy()
-            except Exception as e: messagebox.showerror(self.lang_manager.get("dlg_amnesia_msg_err_title"), self.lang_manager.get("dlg_amnesia_msg_err").format(e=e))
-
-        btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
-        btn_frame.pack(pady=(0, 20))
-        ctk.CTkButton(btn_frame, text=self.lang_manager.get("btn_cancel"), width=100, fg_color=self.theme_manager.get("bg_card"), hover_color=self.theme_manager.get("border"), text_color=self.theme_manager.get("text"), command=dialog.destroy).pack(side="left", padx=10)
-        ctk.CTkButton(btn_frame, text=self.lang_manager.get("dlg_amnesia_btn_del"), width=160, fg_color=self.theme_manager.get("red"), hover_color="#c5536b", text_color=self.theme_manager.get("bg_dark"), font=ctk.CTkFont(weight="bold"), command=apply_amnesia).pack(side="left", padx=10)
 
     def reload_all_ai_files(self):
         """Ejecuta los callbacks inyectados por las Vistas para refrescar la UI forzosamente."""
@@ -530,6 +461,7 @@ class MeowLauncher(ctk.CTk):
             "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL",  # logging estándar
             "asyncio", "discord.", "websocket", "heartbeat",   # internals de discord.py
             "2025", "2026",  # timestamps del logging (formato: YYYY-MM-DD HH:MM:SS)
+            "🔥",            # Filtro para ignorar los ON_MESSAGE pasivos
         )
         while self.bot_process and self.bot_process.stdout:
             try:
@@ -569,7 +501,7 @@ class MeowLauncher(ctk.CTk):
                 # Elimina logs ruidosos y de bajo nivel (Asyncio/Discord.py) para ofrecer una experiencia estética al humano.
                 line_stripped = line.strip()
                 is_noise = any(line_stripped.startswith(p) for p in NOISE_PREFIXES)
-                has_bot_emoji = any(e in line for e in ("🎵", "🧠", "⚙️", "📥", "📤", "✅", "❌", "⚠️", "🔥", "🔄", "💾", "🔑", "🌐", "🎙️", "📝", "✨", "💤", "📉", "🔁", "👁️", "IPC_PROGRESS", "[LAUNCHER]", "[WORKER", "[SISTEMA]", "[SHUTDOWN]", "[IPC]", "ENCENDIDO", "APAGADO", "Sesión iniciada", "Conexión con Discord", "Esperando comandos"))
+                has_bot_emoji = any(e in line for e in ("🎵", "🧠", "⚙️", "📥", "📤", "✅", "❌", "⚠️", "💬", "💾", "🔑", "🌐", "🎙️", "📝", "✨", "💤", "📉", "🔁", "👁️", "IPC_PROGRESS", "[LAUNCHER]", "[WORKER", "[SISTEMA]", "[SHUTDOWN]", "[IPC]", "ENCENDIDO", "APAGADO", "Sesión iniciada", "Conexión con Discord", "Esperando comandos"))
                 
                 if not is_noise or has_bot_emoji:
                     self.after(0, lambda l=line: self.log_to_console(l, "main"))
@@ -578,7 +510,7 @@ class MeowLauncher(ctk.CTk):
                 if "🎵" in line:
                     self.after(0, lambda l=line: self.log_to_console(l, "music"))
                     
-                if any(m in line for m in ("🧠", "🔥", "📥", "📤", "⚙️", "📝", "[IDENTITY]")):
+                if any(m in line for m in ("🧠", "📥", "📤", "⚙️", "📝", "[IDENTITY]")):
                     self.after(0, lambda l=line: self.log_to_console(l, "ai"))
 
             except: break

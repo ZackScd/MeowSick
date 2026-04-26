@@ -35,9 +35,9 @@ class AIManager:
         # Nombres corregidos — los originales (gemini-3-flash-preview, gemini-flash-latest)
         # no existen en la API de Google y causaban 400/404 instantáneos.
         self.CHAT_HIERARCHY = [
-            "gemini-2.5-flash-preview-04-17", # Tier 1: Gemini 2.5 Flash (Google AI Studio, 2025).
-            "gemini-2.0-flash",               # Tier 2: Gemini 2.0 Flash, modelo estable.
-            "gemini-1.5-flash"                # Tier 3: Salvavidas, siempre disponible en free tier.
+            "gemini-2.5-flash",      # Tier 1: 5 RPM, 250K TPM — modelo principal estable
+            "gemini-3-flash",        # Tier 2: 5 RPM, 250K TPM — respaldo
+            "gemma-3-27b-it",        # Tier 3: 30 RPM — salvavidas de alta capacidad (gratis)                # Tier 3: Salvavidas, siempre disponible en free tier.
         ]
 
         # Modelos de subprocesos: Gemma en Google AI Studio (nube), NO locales de Ollama.

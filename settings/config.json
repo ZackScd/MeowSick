@@ -34,7 +34,7 @@
         "aff_max": 100,
         "tts_engine": "nube_edge",
         "tts_rvc": false,
-        "ai_engine": "local",
+        "ai_engine": "nube",
         "ollama_endpoint": "http://localhost:11434",
         "ollama_model": "gemma3:12b",
         "ollama_fallback": false,

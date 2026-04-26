@@ -326,6 +326,12 @@ class AICore(commands.Cog):
         vc.play(source, after=after_tts)
 
     @commands.Cog.listener()
+    async def on_command(self, ctx):
+        """Captura comandos válidos globalmente y los imprime en la terminal principal."""
+        short_content = ctx.message.clean_content[:60] + ("..." if len(ctx.message.clean_content) > 60 else "")
+        print(self.bot.lang.get("sys_ai_core_interact").format(user=ctx.author.display_name, content=short_content))
+
+    @commands.Cog.listener()
     async def on_message(self, message):
         """Oyente global: Se dispara cada vez que CUALQUIER usuario envía un mensaje en Discord."""
         print(self.bot.lang.get("sys_ai_core_on_msg").format(mid=message.id))
@@ -384,6 +390,10 @@ class AICore(commands.Cog):
             if now - last < 3.0: return # Cooldown estricto de 3s para evadir saturación
             
             self.last_response_time[message.channel.id] = now
+            
+            short_content = message.clean_content[:60] + ("..." if len(message.clean_content) > 60 else "")
+            print(self.bot.lang.get("sys_ai_core_interact").format(user=message.author.display_name, content=short_content))
+            
             print(self.bot.lang.get("sys_ai_core_dispatch").format(mid=message.id))
             await self.chat_queue.put((message, is_direct)) # Despachar al Worker en lugar de congelar
 

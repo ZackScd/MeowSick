@@ -296,11 +296,10 @@ Repetir el Paso 6 metódicamente para las demás pantallas:
     - [x] Crear clase, migrar `create_local_guide_frame` y adaptar controlador.
     - [x] Actualizar botón en el launcher y borrar método original.
 
-- [ ] **Tarea de Usabilidad: Reorganizar Menú de Configuración de IA**
-  - [ ] Eliminar botón "🤖 Motores de IA" del menú de configuración general.
-  - [ ] Añadir botón "🧠 Núcleo Cognitivo" en el submenú de IA.
-  - [ ] Implementar vista "🔄 Restablecer" con pestañas y selección granular expansible.
-  - [ ] Implementar vista "🎭 Personalidades Prefabricadas" con selector, panel informativo y alerta nativa integrada.
+- [x] **Tarea de Usabilidad: Reorganizar Menú de Configuración de IA**
+  - [x] Eliminar botón "🤖 Motores de IA" del menú de configuración general.
+  - [x] Añadir botón "🧠 Núcleo Cognitivo" en el submenú de IA.
+  - [x] Implementar vista unificada "🎭 Personalidades y Restablecimiento" (Presets + Borrado granular modular en una sola pantalla).
 
 ---
 
@@ -356,13 +355,13 @@ Los múltiples bloques `except: pass` a lo largo del código están ocultando fa
   - [ ] Añadir parámetros `"language"` y `"theme"` a `config.json`.
 
 - [ ] **Tarea de Corrección: Unificar y Reparar Sistema de Restablecimiento**
-  - [ ] Centralizar lógica de reset para leer plantillas desde `build.py`.
-  - [ ] Soportar reseteo parcial de archivos compuestos (ej. solo "gustos" de `autoconcepto.json`).
-  - [ ] Ajustar rangos de afinidad por defecto para mayor granularidad (subdividir tramo 50–100).
+  - [x] Centralizar lógica de reset para leer plantillas desde `build.py`.
+  - [x] Soportar reseteo parcial de archivos compuestos (ej. solo "gustos" de `autoconcepto.json`).
+  - [x] Ajustar rangos de afinidad por defecto para mayor granularidad (subdividir tramos, ej: 50–100).
 
 - [ ] **Tarea de Corrección: Refinar Valores por Defecto de la IA**
-  - [ ] Estandarizar personalidad base como neutral/estable.
-  - [ ] Modificar prompt `evolucion_analisis` para bloquear invención de estados no listados en `estados_posibles.json`.
+  - [x] Estandarizar personalidad base como neutral/estable.
+  - [x] Modificar prompt `evolucion_analisis` para bloquear invención de estados no listados en `estados_posibles.json`.
 
 - [ ] **Tarea de Corrección: Bugs de Memoria y Auto-Reconocimiento**
   - [ ] Añadir validación completa de `bot.user.id` en `identity.py` y en los tres tasks de `memory.py`.
@@ -456,7 +455,7 @@ Una vez que la estructura del código esté limpia y estabilizada, se procederá
 
 - [ ] **Tarea 14: Desacoplar Script de Compilación (`build.py`)**
   - [ ] Modificar para leer configs del entorno de desarrollo en lugar de tenerlas hardcodeadas.
-  - [ ] Purgar solo valores sensibles (tokens, keys) al generar la distribución.
+  - [ ] Purgar solo valores sensibles (tokens, keys, memorias) al generar la distribución.
 
 - [ ] **Tarea 15: Abstraer Motores Multimodales (TTS/STT)**
   - [ ] Crear `cogs/AI/tts_manager.py` con clase `TTSManager` (Edge-TTS, Piper, etc.).
