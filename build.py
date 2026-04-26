@@ -161,13 +161,12 @@ def create_clean_dist_files():
         "historial_estados.json": [],
         "estado_animo.json": {"estado_animo": "Neutral: Comportamiento por defecto."},
         "estados_posibles.json": DEFAULT_MOODS,
-        "prompts.json": DEFAULT_PROMPTS
+        "prompts.json": DEFAULT_PROMPTS,
+        "afinidad_rangos.json": DEFAULT_RANGES
     }
     for file_name, content in json_resets.items():
         with open(os.path.join(mem_dir, file_name), "w", encoding="utf-8") as f:
             json.dump(content, f, indent=4)
-            
-    ConfigManager.save_json(os.path.join(mem_dir, "afinidad_rangos.json"), DEFAULT_RANGES, use_lock=False)
             
     # 1.4. Reseteo del autoconcepto con su estructura base
     with open(os.path.join(mem_dir, "autoconcepto.json"), "w", encoding="utf-8") as f:
