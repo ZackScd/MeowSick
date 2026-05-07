@@ -28,35 +28,6 @@ SETTINGS_DIR = os.path.join(BASE_DIR, "settings")
 FFMPEG_DIR = os.path.join(BASE_DIR, "res", "ffmpeg", "ffmpeg.exe")
 DOWNLOADS_DIR = os.path.join(BASE_DIR, "downloads")
 
-# --- 2. CONFIGURACIÓN DE EXTRACTORES Y REPRODUCTORES ---
-# Opciones de configuración para yt-dlp, la librería encargada de buscar y extraer metadatos de YouTube.
-YTDL_OPTIONS = {
-    'format': 'bestaudio/best',     # Prioriza el formato de audio de mayor calidad disponible.
-    'extractaudio': True,           # Fuerza la extracción exclusiva de la pista de audio.
-    'audioformat': 'mp3',           # Especifica el formato de salida preferido.
-    'outtmpl': os.path.join(DOWNLOADS_DIR, '%(extractor)s-%(id)s-%(title)s.%(ext)s'), # Plantilla para nombres de archivo.
-    'restrictfilenames': True,      # Limpia caracteres especiales de los nombres de archivo.
-    'noplaylist': True,             # Previene la descarga automática de listas de reproducción enteras si se provee la URL de un video que pertenece a una.
-    'nocheckcertificate': True,     # Omite la validación del certificado SSL (útil en algunos entornos de red).
-    'ignoreerrors': False,          # Detiene la ejecución si ocurre un error durante la extracción.
-    'logtostderr': False,           # Desactiva el registro de errores en la salida de error estándar.
-    'quiet': True,                  # Minimiza la salida de consola de yt-dlp.
-    'no_warnings': True,            # Suprime advertencias no críticas.
-    'default_search': 'auto',       # Permite buscar por términos genéricos en lugar de requerir una URL estricta.
-    'source_address': '0.0.0.0',    # Enlaza a direcciones IPv4 para evitar problemas con IPv6 en ciertos servidores.
-}
-
-# Opciones de configuración para FFmpeg, el motor subyacente que codifica el flujo de audio para Discord.
-FFMPEG_OPTIONS = {
-    # Opciones previas a la entrada: Configuran reconexiones automáticas para evitar cortes si el streaming remoto fluctúa.
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    # Opciones globales: '-vn' deshabilita el procesamiento de video, ahorrando recursos de CPU.
-    'options': '-vn',
-}
-
-# Instancia global del extractor de YouTube.
-ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
-
 # --- 3. ESTRUCTURAS DE DATOS Y UI ---
 
 class MusicQueue:
@@ -98,8 +69,8 @@ class QueueView(View):
     Implementa paginación asíncrona para visualizar colas de reproducción extensas
     sin exceder el límite de caracteres de los mensajes (Embeds).
     """
-    def __init__(self, ctx, queue, page_size, outputs):
-        super().__init__(timeout=60) # Configura la vista para que expire tras 60 segundos de inactividad.
+    def __init__(self, ctx, queue, page_size, outputs, timeout=60):
+        super().__init__(timeout=timeout) # Configura la vista para que expire tras el timeout.
         self.ctx = ctx # Guarda el contexto (canal, usuario) donde se envió el menú.
         self.queue = queue # Almacena la lista de canciones actual.
         self.page_size = page_size # Guarda cuántas canciones se mostrarán por cada página.
@@ -127,12 +98,14 @@ class QueueView(View):
         for i, song in enumerate(page_items, start=start + 1): # Itera las canciones, enumerándolas correctamente.
             desc += f"`{i}.` **{song['title']}**\n" # Añade cada título al bloque de texto con formato Markdown.
         
+        empty_text = self.outputs.get("list_empty", "Cola vacía.")
         embed = discord.Embed( # Crea el panel visual rico (Embed).
             title=self.outputs.get("list_title"), # Lee el título personalizado desde el archivo de configuración de salidas.
-            description=desc or "Cola vacía.", # Muestra el texto compilado, o un aviso por defecto si no hay nada.
+            description=desc or empty_text, # Muestra el texto compilado, o un aviso por defecto si no hay nada.
             color=0xbb9af7 # Define el color del borde izquierdo del panel (Morado/Violeta).
         )
-        embed.set_footer(text=f"Página {self.current_page + 1}/{self.total_pages} | Total: {len(self.queue)}") # Añade un pie de página con el rastreador de páginas.
+        footer_text = self.outputs.get("list_footer", "Página {page}/{total} | Total: {len}").format(page=self.current_page + 1, total=self.total_pages, len=len(self.queue))
+        embed.set_footer(text=footer_text) # Añade un pie de página con el rastreador de páginas.
         return embed # Devuelve el panel listo para enviarse.
 
     @discord.ui.button(emoji="⏪", style=discord.ButtonStyle.secondary)
@@ -165,6 +138,35 @@ class Music(commands.Cog):
         self.outputs = self._load_json(f"locales/outputs_{lang_code}.json") or {} # Carga las traducciones y respuestas.
         self.last_contexts = {} # Persistencia del último contexto de comando recibido, vital para comandos IPC desde el Launcher.
 
+    def get_ytdl_options(self):
+        base = {
+            'format': 'bestaudio/best',
+            'extractaudio': True,
+            'audioformat': 'mp3',
+            'outtmpl': os.path.join(DOWNLOADS_DIR, '%(extractor)s-%(id)s-%(title)s.%(ext)s'),
+            'restrictfilenames': True,
+            'noplaylist': True,
+            'nocheckcertificate': True,
+            'ignoreerrors': False,
+            'logtostderr': False,
+            'quiet': True,
+            'no_warnings': True,
+            'default_search': 'auto',
+            'source_address': '0.0.0.0',
+        }
+        music_cfg = self.config.get("music_config", {})
+        base.update(music_cfg.get("ytdl_options", {}))
+        return base
+
+    def get_ffmpeg_options(self):
+        base = {
+            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_on_network_error 1 -reconnect_on_http_error 4xx,5xx -reconnect_delay_max 15',
+            'options': '-vn',
+        }
+        music_cfg = self.config.get("music_config", {})
+        base.update(music_cfg.get("ffmpeg_options", {}))
+        return base
+
     def _load_json(self, filename):
         """Utilidad interna para carga segura de archivos de configuración JSON."""
         path = os.path.join(SETTINGS_DIR, filename)
@@ -196,7 +198,37 @@ class Music(commands.Cog):
         """
         if guild_id in self.queues: # Comprueba que realmente exista una cola para este servidor.
             titles = [s['title'] for s in self.queues[guild_id].queue[:50]] # Extrae un máximo de 50 títulos para evitar cuellos de botella al enviar datos al launcher.
-            print(f"IPC_QUEUE_UPDATE:{json.dumps(titles, ensure_ascii=False)}") # Imprime el JSON escapado en la terminal con la bandera clave para que el Launcher lo interprete.
+            payload = {"type": "event", "name": "queue_update", "payload": titles}
+            print(f"IPC>>{json.dumps(payload, ensure_ascii=False)}", flush=True) # Imprime con flush=True para evitar que los buffers se unan y rompan el JSON en el Launcher.
+
+    async def ipc_invoke(self, guild_id, action, arg=""):
+        """Invocador directo para comandos IPC desde el Launcher sin simular comandos de Discord."""
+        ctx = self.last_contexts.get(guild_id)
+        if not ctx:
+            print(self.bot.lang.get("sys_ipc_mus_no_ctx").format(guild=guild_id))
+            return
+        
+        commands_map = {
+            "play": self.play.coro,
+            "stop": self.stop.coro,
+            "skip": self.skip.coro,
+            "pause": self.pause.coro,
+            "resume": self.resume.coro,
+            "list": self.queue_list.coro,
+            "shuffle": self.shuffle.coro,
+            "leave": self.leave.coro,
+            "next": self.next_song.coro,
+            "pls": self.pls.coro
+        }
+        
+        coro = commands_map.get(action)
+        if coro:
+            try:
+                if action in ["play", "next"]: await coro(self, ctx, search=arg)
+                else: await coro(self, ctx)
+            except Exception as e: print(self.bot.lang.get("sys_ipc_mus_err").format(e=e))
+        else:
+            print(self.bot.lang.get("sys_ipc_mus_unknown").format(action=action))
 
     # --- 4.1. GESTIÓN DEL CICLO DE VIDA DE LA CONEXIÓN (TEMPORIZADORES) ---
     def cancel_timer(self, guild_id):
@@ -213,7 +245,8 @@ class Music(commands.Cog):
         self.cancel_timer(guild.id) # Primero cancela cualquier temporizador anterior para evitar duplicados.
         
         async def timer_task():
-            await asyncio.sleep(60) # Suspende la ejecución de esta función específica durante 60 segundos.
+            music_cfg = self.config.get("music_config", {})
+            await asyncio.sleep(music_cfg.get("inactivity_sleep", 60)) # Suspende la ejecución según configuración.
             vc = guild.voice_client # Obtiene el estado actual del cliente de voz.
             if vc and vc.is_connected(): # Si el bot sigue conectado después de que pasó el minuto...
                 # Evaluación de condiciones lógicas: Inactividad de flujo de audio o ausencia de clientes no-bot en el canal.
@@ -300,27 +333,28 @@ class Music(commands.Cog):
         self.send_ipc_update(ctx.guild.id)
 
         # Fix: reintentos con backoff exponencial para tolerar tokens expirados o lag de red
-        MAX_RETRIES = 3
+        music_cfg = self.config.get("music_config", {})
+        max_retries = music_cfg.get("max_retries", 3)
         last_error = None
         data = None
 
-        for attempt in range(MAX_RETRIES):
+        for attempt in range(max_retries):
             try:
                 loop = self.bot.loop
                 if attempt > 0:
                     wait_time = 2 ** attempt  # 2s, 4s
-                    print(self.bot.lang.get("sys_mus_retry").format(attempt=attempt, max_retries=MAX_RETRIES-1, title=song['title'], wait=wait_time))
+                    print(self.bot.lang.get("sys_mus_retry").format(attempt=attempt, max_retries=max_retries-1, title=song['title'], wait=wait_time))
                     await asyncio.sleep(wait_time)
 
                 data = await loop.run_in_executor(
                     None,
-                    lambda: ytdl.extract_info(song['webpage_url'], download=False)
+                    lambda: yt_dlp.YoutubeDL(self.get_ytdl_options()).extract_info(song['webpage_url'], download=False)
                 )
                 last_error = None
                 break  # Éxito, salir del bucle de reintentos
             except Exception as e:
                 last_error = e
-                print(self.bot.lang.get("sys_mus_extract_err").format(attempt=attempt+1, max_retries=MAX_RETRIES, title=song['title'], e_type=type(e).__name__, e_msg=str(e)[:80]))
+                print(self.bot.lang.get("sys_mus_extract_err").format(attempt=attempt+1, max_retries=max_retries, title=song['title'], e_type=type(e).__name__, e_msg=str(e)[:80]))
 
         if last_error or not data:
             print(self.bot.lang.get("sys_mus_all_retries_fail").format(title=song['title']))
@@ -341,7 +375,7 @@ class Music(commands.Cog):
                 await self._send_msg(ctx, "ffmpeg_error")
                 return
 
-            source = discord.FFmpegPCMAudio(source_url, **FFMPEG_OPTIONS, executable=FFMPEG_DIR)
+            source = discord.FFmpegPCMAudio(source_url, **self.get_ffmpeg_options(), executable=FFMPEG_DIR)
             
             def after_play(error):
                 if error:
@@ -366,6 +400,8 @@ class Music(commands.Cog):
             ctx.voice_client.play(source, after=after_play)
             await self._send_msg(ctx, "playing_now", title=title)
             print(self.bot.lang.get("sys_mus_playing_log").format(title=title))
+            payload = {"type": "event", "name": "now_playing", "payload": {"title": title}}
+            print(f"IPC>>{json.dumps(payload, ensure_ascii=False)}", flush=True)
 
         except Exception as e:
             import traceback
@@ -393,10 +429,11 @@ class Music(commands.Cog):
                 
                 # Lógica condicional: Desvío algorítmico para acelerar la extracción de listas de reproducción omitiendo la resolución profunda inicial.
                 if "list=" in search and not search.startswith("ytsearch"):
-                    fast_opts = {**YTDL_OPTIONS, 'extract_flat': 'in_playlist'} # Forzamos a yt-dlp a modo superficial (ignorar extraer data técnica en masa).
+                    fast_opts = {**self.get_ytdl_options(), 'extract_flat': 'in_playlist'} # Forzamos a yt-dlp a modo superficial (ignorar extraer data técnica en masa).
                     info = await loop.run_in_executor(None, lambda: yt_dlp.YoutubeDL(fast_opts).extract_info(search, download=False)) # Extrae solo la capa superior de la playlist sin descargar.
                 else:
-                    info = await loop.run_in_executor(None, lambda: ytdl.extract_info(search, download=False)) # Ejecuta búsqueda normal en hilo secundario.
+                    ytdl_opts = self.get_ytdl_options()
+                    info = await loop.run_in_executor(None, lambda: yt_dlp.YoutubeDL(ytdl_opts).extract_info(search, download=False)) # Ejecuta búsqueda normal en hilo secundario.
                 
                 queue = self.get_queue(ctx) # Invoca al administrador de cola del servidor correspondiente.
                 added_song = None # Variable auxiliar para rastrear lo que pusimos.
@@ -483,7 +520,9 @@ class Music(commands.Cog):
             return # Cierre temprano.
         
         limit = self.config.get("queue_page_limit", 10) # Investiga cuántas páginas configurar leyendo el JSON global. Si no hay, usa 10 como medida predeterminada sensata.
-        view = QueueView(ctx, queue.queue, limit, self.outputs) # Instancia una vista UI enlazando la pila de datos con los componentes visuales de Discord.
+        music_cfg = self.config.get("music_config", {})
+        view_timeout = music_cfg.get("view_timeout", 60)
+        view = QueueView(ctx, queue.queue, limit, self.outputs, timeout=view_timeout) # Instancia una vista UI enlazando la pila de datos con los componentes visuales de Discord.
         await ctx.send(embed=view.get_embed(), view=view) # Engancha el Embed inicial extraído de la instancia y anexa el administrador de eventos `view` al mensaje.
 
     @commands.command(name="shuffle")
@@ -524,7 +563,8 @@ class Music(commands.Cog):
                 loop = self.bot.loop # Intercepta el bucle de eventos nativo de Python para uso en hilos paralelos.
                 print(self.bot.lang.get("sys_mus_search_next_log").format(search=search)) # Inyección simple en consola local para debug visual en PC.
                 
-                info = await loop.run_in_executor(None, lambda: ytdl.extract_info(search, download=False)) # Manda al motor de extracción profunda el texto asíncronamente en bloque de hilo ciego.
+                ytdl_opts = self.get_ytdl_options()
+                info = await loop.run_in_executor(None, lambda: yt_dlp.YoutubeDL(ytdl_opts).extract_info(search, download=False)) # Manda al motor de extracción profunda el texto asíncronamente en bloque de hilo ciego.
                 if 'entries' in info: info = info['entries'][0] # Traga el primer índice caso sea listado o ytsearch nativo por debajo del capó.
 
                 added_song = {'title': info['title'], 'webpage_url': info['webpage_url']} # Comprime de manera simple título limpio y url web (No el directo streaming, sino el de YouTube).
@@ -571,7 +611,7 @@ class Music(commands.Cog):
                 print(self.bot.lang.get("sys_mus_search_pls_log").format(url=url)) # Log inofensivo.
                 
                 # Directiva extract_flat: Optimización crítica para análisis superficial. Obtiene diccionarios minimalistas en vez de resolver datos de codificación masivos.
-                fast_opts = {**YTDL_OPTIONS, 'extract_flat': 'in_playlist'} # Manda la navaja rápida en yt-dlp. Saca nombres e ids pero ignora la URL real M3U8 para no colapsar la RAM de inmediato.
+                fast_opts = {**self.get_ytdl_options(), 'extract_flat': 'in_playlist'} # Manda la navaja rápida en yt-dlp. Saca nombres e ids pero ignora la URL real M3U8 para no colapsar la RAM de inmediato.
                 
                 info = await loop.run_in_executor(None, lambda: yt_dlp.YoutubeDL(fast_opts).extract_info(url, download=False)) # Manda al pozo sin fondo el cálculo.
                 

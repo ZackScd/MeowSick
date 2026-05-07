@@ -179,7 +179,7 @@ class AIManager:
             "options": {
                 "temperature": temperature,
                 "num_predict": max_tokens,
-                "repeat_penalty": 1.1,
+                "repeat_penalty": config.get("repeat_penalty", 1.1),
                 "stop": ["\n[NUEVO MENSAJE", "\nTÚ (", "\n[HISTORIAL", "[TU RESPUESTA]"]
             }
         }
@@ -204,8 +204,9 @@ class AIManager:
             }]
         
         try:
-            # Timeout alto (180s) para evitar cortes mientras la GPU local procesa modelos pesados
-            timeout = aiohttp.ClientTimeout(total=180)
+            # Timeout alto para evitar cortes mientras la GPU local procesa modelos pesados
+            client_timeout = config.get("client_timeout", 180)
+            timeout = aiohttp.ClientTimeout(total=client_timeout)
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.post(f"{endpoint}/api/chat", json=payload) as response:
                     if response.status == 200:

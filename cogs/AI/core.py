@@ -14,6 +14,8 @@ from PIL import Image
 # Importamos los módulos locales del paquete AI
 from .utils import ai_manager          # Gestor de conexión y peticiones a la API de Gemini
 from .identity import identity_manager # Gestor estático de identidades y usuarios
+from .tts_manager import tts_manager
+from .stt_manager import stt_manager
 from shared.config_manager import ConfigManager
 # Nota: Evolution y Memory se cargan como Cogs separados, 
 # accedemos a ellos vía self.bot.get_cog()
@@ -30,6 +32,8 @@ class TalkView(discord.ui.View):
         if getattr(sys, 'frozen', False): base_dir = os.path.dirname(sys.executable)
         else: base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.audio_path = os.path.join(base_dir, "downloads", f"voice_in_{vc.guild.id}.wav")
+        # TRADUCCIÓN DINÁMICA: Aplica el idioma configurado al botón al instanciarse la vista
+        self.children[0].label = self.cog.bot.lang.get("ui_talk_btn_talk")
 
     def clean_stop(self):
         """Detiene forzosamente la vista y la grabación si está activa."""
@@ -38,30 +42,31 @@ class TalkView(discord.ui.View):
             try: self.vc.stop_listening()
             except: pass
 
-    @discord.ui.button(label="🎙️ Hablar", style=discord.ButtonStyle.green, custom_id="btn_talk")
+    @discord.ui.button(label="Hablar", style=discord.ButtonStyle.green, custom_id="btn_talk")
     async def talk_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        lang = self.cog.bot.lang
         try: import discord.ext.voice_recv as voice_recv
         except ImportError: voice_recv = None
         
         if not voice_recv:
-            return await interaction.response.send_message("⚠️ Librería voice_recv no instalada. Ejecuta: `pip install discord-ext-voice-recv`", ephemeral=True)
+            return await interaction.response.send_message(lang.get("ui_talk_no_lib"), ephemeral=True)
         
         if not self.vc or not self.vc.is_connected():
-            button.label, button.style, button.disabled = "Desconectado", discord.ButtonStyle.secondary, True
+            button.label, button.style, button.disabled = lang.get("ui_talk_btn_dc"), discord.ButtonStyle.secondary, True
             await interaction.response.edit_message(view=self)
-            return await interaction.followup.send("⚠️ El bot ya no está en el canal de voz.", ephemeral=True)
+            return await interaction.followup.send(lang.get("ui_talk_dc"), ephemeral=True)
 
         if interaction.user.voice is None or interaction.user.voice.channel != self.vc.channel:
-            return await interaction.response.send_message("⚠️ Debes estar en mi canal de voz para usar el micrófono.", ephemeral=True)
+            return await interaction.response.send_message(lang.get("ui_talk_no_vc"), ephemeral=True)
 
         if self.is_recording:
             if self.current_speaker and interaction.user.id != self.current_speaker.id:
-                return await interaction.response.send_message(f"⚠️ Por favor espera, estoy escuchando a {self.current_speaker.display_name}.", ephemeral=True)
+                return await interaction.response.send_message(lang.get("ui_talk_busy").format(speaker=self.current_speaker.display_name), ephemeral=True)
             
             # --- DETENER GRABACIÓN ---
             self.is_recording = False
             self.current_speaker = None
-            button.label = "⏳ Procesando..."
+            button.label = lang.get("ui_talk_btn_wait")
             button.style = discord.ButtonStyle.secondary
             button.disabled = True
             await interaction.response.edit_message(view=self)
@@ -77,7 +82,7 @@ class TalkView(discord.ui.View):
             # --- INICIAR GRABACIÓN ---
             self.is_recording = True
             self.current_speaker = interaction.user
-            button.label = "🔴 Escuchando (Click para detener)..."
+            button.label = lang.get("ui_talk_btn_rec")
             button.style = discord.ButtonStyle.danger
             await interaction.response.edit_message(view=self)
             
@@ -246,70 +251,11 @@ class AICore(commands.Cog):
         vc = guild.voice_client
         if not vc or not vc.is_connected(): return
             
-        try: import edge_tts
-        except ImportError: edge_tts = None
-            
-        if not edge_tts:
-            print(self.bot.lang.get("sys_ai_core_tts_no_lib"))
-            return
-
-        # Limpiar texto de emojis, URLs y formato markdown para que la IA suene natural
-        clean_text = re.sub(r'<a?:[a-zA-Z0-9_]+:[0-9]+>', '', text) 
-        clean_text = re.sub(r'http\S+', '', clean_text)
-        clean_text = clean_text.replace('*', '').replace('`', '').replace('_', '').replace('~', '')
-        
-        # Limitar longitud para evitar cuelgues largos
-        clean_text = clean_text[:800].strip()
-        if not clean_text: return
-        
-        # Preparar entorno de archivos
-        if getattr(sys, 'frozen', False): base_dir = os.path.dirname(sys.executable)
-        else: base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            
-        downloads_dir = os.path.join(base_dir, "downloads")
-        os.makedirs(downloads_dir, exist_ok=True)
-        
-        tts_engine = self._get_config().get("tts_engine", "nube_edge")
-        ffmpeg_exe = os.path.join(base_dir, "res", "ffmpeg", "ffmpeg.exe")
-        
-        # --- RVC FILTER (CLONACIÓN DE VOZ) ---
-        if self._get_config().get("tts_rvc", False):
-            print(self.bot.lang.get("sys_ai_core_rvc_on"))
-            # En el futuro, aquí se pasaría el 'tts_file' a través del modelo PyTorch local.
-
-        # --- MOTOR LOCAL (PIPER TTS) ---
-        if tts_engine == "local_piper":
-            tts_file = os.path.join(downloads_dir, f"tts_ia_{guild.id}.wav")
-            piper_exe = os.path.join(base_dir, "res", "piper", "piper.exe")
-            voice_model = self._get_config().get("tts_voice", "es_MX-dalia-medium.onnx")
-            model_path = os.path.join(base_dir, "res", "piper", "voices", voice_model)
-            
-            print(self.bot.lang.get("sys_ai_core_tts_loc_gen").format(model=voice_model))
-            try:
-                if not os.path.exists(piper_exe) or not os.path.exists(model_path):
-                    raise Exception("Binario de Piper o Modelo ONNX no encontrados.")
-                process = await asyncio.create_subprocess_shell(
-                    f'"{piper_exe}" -m "{model_path}" -f "{tts_file}"',
-                    stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-                )
-                await process.communicate(input=clean_text.encode('utf-8'))
-            except Exception as e:
-                print(self.bot.lang.get("sys_ai_core_tts_loc_err").format(e=e))
-                tts_engine = "nube_edge" # Fallback automático
-                
-        # --- MOTOR NUBE (EDGE-TTS) ---
-        if tts_engine == "nube_edge":
-            tts_file = os.path.join(downloads_dir, f"tts_ia_{guild.id}.mp3")
-            voice_model = self._get_config().get("tts_voice", "es-MX-DaliaNeural")
-            print(self.bot.lang.get("sys_ai_core_tts_cld_gen").format(model=voice_model))
-            try:
-                communicate = edge_tts.Communicate(clean_text, voice_model)
-                await communicate.save(tts_file)
-            except Exception as e:
-                print(self.bot.lang.get("sys_ai_core_tts_cld_err").format(e=e))
-                return
-            
+        ffmpeg_exe = os.path.join(tts_manager.base_dir, "res", "ffmpeg", "ffmpeg.exe")
         if not os.path.exists(ffmpeg_exe): return
+
+        tts_file = await tts_manager.generate_tts(text, guild.id, self._get_config(), self.bot.lang)
+        if not tts_file: return
 
         # --- Resolución de Conflictos ---
         if vc.is_playing() or vc.is_paused():
@@ -380,14 +326,16 @@ class AICore(commands.Cog):
         is_direct = is_dm or is_mention or is_reply
         
         # UX Social (Anti-Spam Cognitivo): Probabilidad de respuesta espontánea
-        is_spontaneous = not is_direct and not is_command and random.random() < 0.05
+        spontaneous_prob = self._get_config().get("spontaneous_prob", 0.05)
+        is_spontaneous = not is_direct and not is_command and random.random() < spontaneous_prob
 
         should_respond = (is_direct or is_spontaneous) and not is_command
 
         if should_respond:
             now = time.time()
             last = self.last_response_time.get(message.channel.id, 0)
-            if now - last < 3.0: return # Cooldown estricto de 3s para evadir saturación
+            cooldown = self._get_config().get("cooldown", 3.0)
+            if now - last < cooldown: return # Cooldown estricto para evadir saturación
             
             self.last_response_time[message.channel.id] = now
             
@@ -410,7 +358,8 @@ class AICore(commands.Cog):
             
             # Degradación Estricta por Modo Gamer
             if gamer_mode:
-                limit = min(limit, 5) # Reduce historial
+                gamer_limit = config.get("gamer_limit", 5)
+                limit = min(limit, gamer_limit) # Reduce historial
                 enable_vision = False # Desactiva el procesador de imágenes
                 
             async for msg in message.channel.history(limit=limit, before=message):
@@ -559,22 +508,10 @@ class AICore(commands.Cog):
             media_data = None
             engine = self._get_config().get("ai_engine", "local")
             
-            if engine == "local":
-                try: from faster_whisper import WhisperModel
-                except ImportError: WhisperModel = None
-                
-                if not WhisperModel: raise Exception("Librería faster-whisper no instalada.")
-                print(self.bot.lang.get("sys_ai_core_stt_loc"))
-                def transcribe():
-                    model = WhisperModel("tiny", device="cpu", compute_type="int8")
-                    segs, _ = model.transcribe(audio_path, beam_size=5)
-                    return " ".join([s.text for s in segs])
-                transcript = await self.bot.loop.run_in_executor(None, transcribe)
-                mock_msg.clean_content = f"[Mensaje de Voz Transcrito]: {transcript}"
-            else:
-                mock_msg.clean_content = "[El usuario ha enviado una nota de voz adjunta. Escúchala atentamente y responde natural.]"
-                b64_audio = base64.b64encode(audio_bytes).decode('utf-8')
-                media_data = ("audio/wav", b64_audio)
+            transcript, media_data = await stt_manager.transcribe(audio_path, audio_bytes, engine, self.bot.lang, self.bot.loop)
+            
+            if transcript: mock_msg.clean_content = f"[Mensaje de Voz Transcrito]: {transcript}"
+            elif media_data: mock_msg.clean_content = "[El usuario ha enviado una nota de voz adjunta. Escúchala atentamente y responde natural.]"
             
             # Extraer historial
             history = []
@@ -619,10 +556,10 @@ class AICore(commands.Cog):
                 if mem_cog: mem_cog.add_to_buffer(my_msg_fmt)
                 
                 if is_tts_active: await self._speak_response(interaction.guild, response)
-            else: await interaction.channel.send("⚠️ No pude entender el audio o hubo un error de red.")
-        except Exception as e: await interaction.channel.send(f"⚠️ Error procesando audio: {e}")
+            else: await interaction.channel.send(self.bot.lang.get("ui_talk_err_audio"))
+        except Exception as e: await interaction.channel.send(self.bot.lang.get("ui_talk_err_proc").format(e=e))
         finally:
-            view.children[0].label, view.children[0].style, view.children[0].disabled = "🎙️ Hablar", discord.ButtonStyle.green, False
+            view.children[0].label, view.children[0].style, view.children[0].disabled = self.bot.lang.get("ui_talk_btn_talk"), discord.ButtonStyle.green, False
             try: await interaction.message.edit(view=view)
             except: pass
 
@@ -633,17 +570,17 @@ class AICore(commands.Cog):
         except ImportError: voice_recv = None
         
         if not self._get_config().get("enable_tts", True):
-            await ctx.send("⚠️ **El módulo de voz está apagado** en la configuración general.")
+            await ctx.send(self.bot.lang.get("cmd_voice_off"))
             return
 
         if not hasattr(self, 'active_tts'): self.active_tts = set()
             
         if ctx.guild.id in self.active_tts:
             self.active_tts.remove(ctx.guild.id)
-            await ctx.send("🔇 **Módulo de voz desactivado.**")
+            await ctx.send(self.bot.lang.get("cmd_voice_disabled"))
         else:
             if not ctx.author.voice:
-                await ctx.send("⚠️ **Debes estar en un canal de voz** para activar este módulo.")
+                await ctx.send(self.bot.lang.get("cmd_voice_no_vc"))
                 return
                 
             vc = ctx.voice_client
@@ -653,9 +590,9 @@ class AICore(commands.Cog):
                     else: await ctx.author.voice.channel.connect()
                 elif vc.channel.id != ctx.author.voice.channel.id: await vc.move_to(ctx.author.voice.channel)
                 self.active_tts.add(ctx.guild.id)
-                await ctx.send("🎙️ **Módulo de voz activado.**")
+                await ctx.send(self.bot.lang.get("cmd_voice_enabled"))
             except Exception as e:
-                await ctx.send(f"❌ Error al conectar al canal de voz: {e}")
+                await ctx.send(self.bot.lang.get("cmd_voice_err_conn").format(e=e))
 
     @commands.command()
     async def talk(self, ctx):
@@ -664,22 +601,22 @@ class AICore(commands.Cog):
         except ImportError: voice_recv = None
         
         if not self._get_config().get("enable_stt", True):
-            return await ctx.send("⚠️ **El módulo de escucha está apagado** en la configuración general.")
+            return await ctx.send(self.bot.lang.get("cmd_talk_off"))
             
-        if not voice_recv: return await ctx.send("⚠️ El módulo de escucha requiere la librería: `pip install discord-ext-voice-recv`")
+        if not voice_recv: return await ctx.send(self.bot.lang.get("cmd_talk_no_lib"))
         
         if not hasattr(self, 'active_talk'): self.active_talk = {}
         
         if ctx.guild.id in self.active_talk:
             old_view = self.active_talk.pop(ctx.guild.id)
             old_view.clean_stop()
-            return await ctx.send("🔇 **Modo Conversación Desactivado.**")
+            return await ctx.send(self.bot.lang.get("cmd_talk_disabled"))
         
         vc = ctx.voice_client
         if not vc:
-            if not ctx.author.voice: return await ctx.send("⚠️ Debes estar en un canal de voz para invocarme.")
+            if not ctx.author.voice: return await ctx.send(self.bot.lang.get("cmd_talk_no_vc"))
             try: vc = await ctx.author.voice.channel.connect(cls=voice_recv.VoiceRecvClient)
-            except Exception as e: return await ctx.send(f"❌ Error al conectar: {e}")
+            except Exception as e: return await ctx.send(self.bot.lang.get("cmd_talk_err_conn").format(e=e))
         
         # Asegurar que esté activo el modo de lectura (TTS) automáticamente
         if not hasattr(self, 'active_tts'): self.active_tts = set()
@@ -687,16 +624,16 @@ class AICore(commands.Cog):
         
         view = TalkView(self, vc)
         self.active_talk[ctx.guild.id] = view
-        await ctx.send("🎙️ **Modo Conversación Activo**\nHaz click en el botón, habla por tu micrófono y vuelve a presionarlo para que te responda.", view=view)
+        await ctx.send(self.bot.lang.get("cmd_talk_active"), view=view)
 
     @commands.command()
     async def ask(self, ctx, *, query: str = None):
         """Busca información en internet y responde en base a ella."""
         if not self._get_config().get("enable_web_search", True):
-            return await ctx.send("⚠️ **El módulo de búsqueda web está apagado** en la configuración general.")
+            return await ctx.send(self.bot.lang.get("cmd_ask_off"))
             
         if not query:
-            return await ctx.send("⚠️ Debes decirme qué buscar. Ej: `!ask clima en Madrid hoy`")
+            return await ctx.send(self.bot.lang.get("cmd_ask_no_args"))
             
         method = self._get_config().get("web_search_method", "google")
         max_res = self._get_config().get("web_search_max_results", 3)
@@ -720,7 +657,7 @@ class AICore(commands.Cog):
                 except ImportError: DDGS = None
                 
                 if not DDGS:
-                    return await ctx.send("⚠️ Falta librería DDGS. Ejecuta en terminal: `pip install duckduckgo-search`")
+                    return await ctx.send(self.bot.lang.get("cmd_ask_no_lib"))
                 try:
                     print(self.bot.lang.get("sys_ai_core_web_ddg").format(query=query))
                     results = await self.bot.loop.run_in_executor(None, lambda: list(DDGS().text(query, max_results=max_res)))
@@ -771,15 +708,13 @@ class AICore(commands.Cog):
                 
                 if is_tts_active: await self._speak_response(ctx.guild, response)
             else:
-                await ctx.send("⚠️ No pude generar una respuesta o hubo un error con la búsqueda.")
+                await ctx.send(self.bot.lang.get("cmd_ask_err"))
 
     @commands.command()
     async def reloadai(self, ctx):
         """Recarga los módulos de IA en caliente."""
         if ctx.author.id != int(os.getenv("ADMIN_ID", 0)): return # Sistema de seguridad: Solo el Creador puede usar esto
-        # La lógica de recarga real suele estar en el bot principal o Utils, 
-        # pero aquí podemos forzar relectura de configs.
-        await ctx.send("♻️ Configuración de IA recargada (buffers limpiados).") # Feedback para Discord
+        await ctx.send(self.bot.lang.get("cmd_reloadai_ok")) # Feedback para Discord
 
 # Función estándar obligatoria de discord.py para cargar Cogs
 async def setup(bot):

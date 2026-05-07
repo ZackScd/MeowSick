@@ -44,10 +44,56 @@ class MusicConfigFrame(ctk.CTkFrame):
         ctk.CTkLabel(pl_help, text=f"ℹ {self.controller.lang_manager.get('cfg_mus_pl_help')}", text_color=self.controller.theme_manager.get("text_dim"), font=ctk.CTkFont(size=11), anchor="w").pack(side="left")
         ctk.CTkButton(pl_row, text="?", width=28, height=28, fg_color=self.controller.theme_manager.get("bg_card"), hover_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"), command=lambda h=pl_help: self.controller.toggle_help(h, "pack", fill="x", padx=180)).pack(side="right")
 
+        # --- AÑADIDO: AJUSTES AVANZADOS (MÚSICA) ---
+        ctk.CTkLabel(scroll, text="Ajustes Avanzados", font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=20, pady=(15, 5))
+        adv_card = ctk.CTkFrame(scroll, fg_color=self.controller.theme_manager.get("bg_card"), corner_radius=10)
+        adv_card.pack(fill="x", padx=20, pady=5)
+        
+        cfg = self.controller._load_json_file("config.json") or {}
+        music_cfg = cfg.get("music_config", {})
+        
+        is_row = ctk.CTkFrame(adv_card, fg_color="transparent")
+        is_row.pack(fill="x", padx=15, pady=(15, 10))
+        ctk.CTkLabel(is_row, text="Tiempo Inactividad (s):", text_color=self.controller.theme_manager.get("text")).pack(side="left")
+        self.entry_inactivity_sleep = ctk.CTkEntry(is_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_inactivity_sleep.pack(side="left", padx=10)
+        self.entry_inactivity_sleep.insert(0, str(music_cfg.get("inactivity_sleep", 60)))
+        ctk.CTkLabel(is_row, text="Segundos antes de desconectarse por inactividad (Defecto: 60).", font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
+        
+        mr_row = ctk.CTkFrame(adv_card, fg_color="transparent")
+        mr_row.pack(fill="x", padx=15, pady=(0, 10))
+        ctk.CTkLabel(mr_row, text="Reintentos Máximos:", text_color=self.controller.theme_manager.get("text")).pack(side="left")
+        self.entry_max_retries = ctk.CTkEntry(mr_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_max_retries.pack(side="left", padx=10)
+        self.entry_max_retries.insert(0, str(music_cfg.get("max_retries", 3)))
+        ctk.CTkLabel(mr_row, text="Máximo de reintentos al extraer una canción (Defecto: 3).", font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
+
+        vt_row = ctk.CTkFrame(adv_card, fg_color="transparent")
+        vt_row.pack(fill="x", padx=15, pady=(0, 15))
+        ctk.CTkLabel(vt_row, text="Expiración de Menús:", text_color=self.controller.theme_manager.get("text")).pack(side="left")
+        self.entry_view_timeout = ctk.CTkEntry(vt_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_view_timeout.pack(side="left", padx=10)
+        self.entry_view_timeout.insert(0, str(music_cfg.get("view_timeout", 60)))
+        ctk.CTkLabel(vt_row, text="Segundos que dura un menú interactivo activo (Defecto: 60).", font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
+
         # Mensajes de Salida (OUTPUTS)
         ctk.CTkLabel(scroll, text=self.controller.lang_manager.get("cfg_mus_msg_title"), font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=20, pady=(20, 5))
         msg_card = ctk.CTkFrame(scroll, fg_color=self.controller.theme_manager.get("bg_card"), corner_radius=10)
         msg_card.pack(fill="x", padx=20, pady=5)
+
+        cfg = self.controller._load_json_file("config.json") or {}
+        if "music_config" not in cfg: cfg["music_config"] = {}
+        
+        try: cfg["music_config"]["inactivity_sleep"] = int(self.entry_inactivity_sleep.get().strip())
+        except ValueError: cfg["music_config"]["inactivity_sleep"] = 60
+        
+        try: cfg["music_config"]["max_retries"] = int(self.entry_max_retries.get().strip())
+        except ValueError: cfg["music_config"]["max_retries"] = 3
+        
+        try: cfg["music_config"]["view_timeout"] = int(self.entry_view_timeout.get().strip())
+        except ValueError: cfg["music_config"]["view_timeout"] = 60
+        
+        self.controller._save_json_file("config.json", cfg)
 
         outputs_filename = f"locales/outputs_{self.controller.lang_code}.json"
         outputs_data = self.controller._load_json_file(outputs_filename) or {}

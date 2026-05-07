@@ -80,12 +80,17 @@ class MeowSickBot(commands.Bot):
         data = ConfigManager.load_json(path, use_lock=use_lock)
         return data if data else default
 
+    def send_ipc_progress(self, pct, msg):
+        """Envía un paquete de progreso serializado al Launcher."""
+        payload = {"type": "event", "name": "progress_update", "payload": {"percent": float(pct), "message": msg}}
+        print(f"IPC>>{json.dumps(payload, ensure_ascii=False)}", flush=True)
+
     async def setup_hook(self):
         """
         Hook que se ejecuta automáticamente después del login pero antes de conectarse al WebSocket.
         Es el lugar ideal para la configuración asíncrona inicial, como la carga de cogs.
         """
-        print(f"IPC_PROGRESS:0.1:{self.lang.get('sys_ipc_prog_clean')}")
+        self.send_ipc_progress(0.1, self.lang.get('sys_ipc_prog_clean'))
         self.clean_cache() # Realiza una limpieza de archivos temporales al iniciar.
         await self.sync_modules()
         # La sincronización de comandos de barra (slash commands) se puede habilitar aquí si se utilizan.
@@ -121,7 +126,7 @@ class MeowSickBot(commands.Bot):
         for i, cog_name in enumerate(available_cogs):
             # Escala del 20% al 80% progresivamente por cada módulo encontrado
             pct = 0.2 + (i / max(1, total_cogs)) * 0.6
-            print(f"IPC_PROGRESS:{pct:.2f}:{self.lang.get('sys_ipc_prog_load').format(module=cog_name)}")
+            self.send_ipc_progress(pct, self.lang.get('sys_ipc_prog_load').format(module=cog_name))
             
             ext_name = f"cogs.{cog_name}"
             # Si no está en config, asumimos False (Desactivado) para seguridad
@@ -180,9 +185,9 @@ class MeowSickBot(commands.Bot):
                 print(self.lang.get("sys_cog_err").format(cog_name=cog_name, e=e))
                 
         if self.is_ready():
-            print(f"IPC_PROGRESS:1.0:{self.lang.get('sys_ipc_prog_done')}")
+            self.send_ipc_progress(1.0, self.lang.get('sys_ipc_prog_done'))
         else:
-            print(f"IPC_PROGRESS:0.8:{self.lang.get('sys_ipc_prog_conn')}")
+            self.send_ipc_progress(0.8, self.lang.get('sys_ipc_prog_conn'))
 
     def clean_cache(self):
         """
@@ -212,7 +217,7 @@ class MeowSickBot(commands.Bot):
         Evento que se dispara cuando el bot ha establecido una conexión exitosa con Discord
         y ha finalizado su preparación interna.
         """
-        print(f"IPC_PROGRESS:1.0:{self.lang.get('sys_ipc_prog_online')}")
+        self.send_ipc_progress(1.0, self.lang.get('sys_ipc_prog_online'))
         print(f"\n{self.lang.get('sys_online').format(user=self.user, uid=self.user.id)}")
         print(self.lang.get("sys_discord_conn"))
         print(self.lang.get("sys_wait_cmds"))
@@ -268,69 +273,43 @@ async def console_listener(bot):
                 
             line = line.strip()
             
-            # Procesa el comando de apagado.
-            if line == "CMD_STOP":
-                print(bot.lang.get("sys_ipc_stop"))
-                await bot.close() # Inicia el proceso de cierre limpio del bot.
-                break
-            
-            # Procesa el comando de recarga en caliente.
-            elif line == "CMD_RELOAD":
-                print(bot.lang.get("sys_ipc_reload"))
-                # Vuelve a cargar el archivo .env para capturar cambios en las credenciales sin reiniciar el proceso.
-                # `override=True` asegura que las variables existentes se sobrescriban.
-                load_dotenv(os.path.join(SETTINGS_DIR, ".env"), override=True)
-                # `run_coroutine_threadsafe` es necesario para ejecutar una corutina (async)
-                # de forma segura desde un contexto síncrono (el hilo del executor).
-                asyncio.run_coroutine_threadsafe(bot.sync_modules(), bot.loop)
-            
-            # Procesa comandos específicos del módulo de música.
-            elif line.startswith("CMD_MUSIC:"):
+            # Procesa JSON estructurado
+            if line.startswith("IPC>>"):
                 try:
-                    # Desestructura el comando: CMD_MUSIC:acción:argumento
-                    parts = line.split(":", 2)
-                    if len(parts) < 2: continue
-                    
-                    action = parts[1]
-                    arg = parts[2] if len(parts) > 2 else ""
-
-                    # Valida que el bot esté en un canal de voz.
-                    if not bot.voice_clients:
-                        print(bot.lang.get("sys_ipc_mus_no_vc"))
-                        continue
-                    
-                    # Obtiene el cliente de voz y el ID del servidor.
-                    vc = bot.voice_clients[0]
-                    guild_id = vc.guild.id
-                    
-                    # Obtiene la instancia del cog de Música.
-                    music_cog = bot.get_cog("Music")
-                    if not music_cog:
-                        print(bot.lang.get("sys_ipc_mus_no_cog"))
-                        continue
-                    
-                    # Recupera el último contexto de comando para ese servidor.
-                    # Esto es un "hack" para poder invocar comandos como si vinieran de un canal de Discord.
-                    last_ctx = music_cog.last_contexts.get(guild_id)
-                    if not last_ctx:
-                        print(bot.lang.get("sys_ipc_mus_no_ctx").format(guild=vc.guild.name))
-                        continue
-
-                    # Obtiene el objeto de comando a partir de su nombre (acción).
-                    command = bot.get_command(action)
-                    if not command:
-                        print(bot.lang.get("sys_ipc_mus_unknown").format(action=action))
-                        continue
-
-                    print(bot.lang.get("sys_ipc_mus_invoke").format(action=action))
-                    # Invoca el callback del comando de forma segura en el bucle de eventos.
-                    # Se diferencia entre comandos que aceptan un argumento de búsqueda y los que no.
-                    if 'search' in command.clean_params:
-                        asyncio.run_coroutine_threadsafe(command.callback(music_cog, last_ctx, search=arg), bot.loop)
-                    else:
-                        asyncio.run_coroutine_threadsafe(command.callback(music_cog, last_ctx), bot.loop)
-                except Exception as e:
-                    print(bot.lang.get("sys_ipc_mus_err").format(e=e))
+                    data = json.loads(line[5:])
+                    if data.get("type") == "command":
+                        cmd_name = data.get("name")
+                        
+                        if cmd_name == "stop":
+                            print(bot.lang.get("sys_ipc_stop"))
+                            await bot.close()
+                            break
+                        
+                        elif cmd_name == "reload":
+                            print(bot.lang.get("sys_ipc_reload"))
+                            load_dotenv(os.path.join(SETTINGS_DIR, ".env"), override=True)
+                            asyncio.run_coroutine_threadsafe(bot.sync_modules(), bot.loop)
+                        
+                        elif cmd_name.startswith("music_"):
+                            action = cmd_name.replace("music_", "")
+                            arg = data.get("payload", {}).get("query", "")
+                            
+                            if not bot.voice_clients:
+                                print(bot.lang.get("sys_ipc_mus_no_vc"))
+                                continue
+                            
+                            vc = bot.voice_clients[0]
+                            guild_id = vc.guild.id
+                            
+                            music_cog = bot.get_cog("Music")
+                            if not music_cog:
+                                print(bot.lang.get("sys_ipc_mus_no_cog"))
+                                continue
+                            
+                            print(bot.lang.get("sys_ipc_mus_invoke").format(action=action))
+                            asyncio.run_coroutine_threadsafe(music_cog.ipc_invoke(guild_id, action, arg), bot.loop)
+                except json.JSONDecodeError:
+                    pass # Ignora líneas erróneas o ruido
 
         except RuntimeError:
             # Se lanza un RuntimeError si el bucle de eventos se cierra mientras `run_in_executor` espera.
@@ -364,7 +343,7 @@ async def main():
     )
 
     bot = MeowSickBot()
-    print(f"IPC_PROGRESS:0.0:{bot.lang.get('sys_ipc_prog_boot')}")
+    bot.send_ipc_progress(0.0, bot.lang.get("sys_ipc_prog_boot"))
     
     if not prevent_zombies():
         print(bot.lang.get("sys_zombie_warn"))

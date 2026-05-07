@@ -99,29 +99,36 @@ La arquitectura de archivos de MeowSick está diseñada para separar estrictamen
 
 ```text
 MeowSick/
-├── launcher.py                 # Punto de entrada de la UI gráfica (CustomTkinter)
+├── launcher.py                 # Punto de entrada de la UI gráfica (CustomTkinter). Muy reducido post-refactorización.
 ├── meowSick.py                 # Punto de entrada del Bot de Discord (Proceso asíncrono)
 ├── build.py                    # Script de compilación (PyInstaller) para empaquetado standalone
 ├── README.md                   # Documentación principal
 ├── ROADMAP.md                  # Plan de refactorización y hoja de ruta
 ├── CHANGELOG.md                # Registro de cambios y versiones
-├── shared/                     # [Módulos Compartidos] Lógica reutilizable (D.R.Y)
-│   ├── config_manager.py       # Gestor centralizado de I/O para archivos JSON (Filelocks)
-│   ├── theme_manager.py        # Inyección dinámica de paletas de colores
-│   └── language_manager.py     # Sistema de internacionalización (i18n)
+│
+├── shared/                     # [Módulos Compartidos] Código reutilizable entre el Launcher y el Bot
+│   ├── __init__.py
+│   ├── config_manager.py       # Gestor centralizado de lectura/escritura JSON (D.R.Y)
+│   ├── theme_manager.py        # Carga dinámica de paletas de colores desde themes/
+│   └── language_manager.py     # Sistema de internacionalización (i18n), carga strings desde locales/
+│
 ├── views/                      # [Vistas UI] Archivos modulares de la interfaz gráfica (Lazy Loading)
-│   ├── dashboard_view.py       # Vista principal (Dashboard)
-│   ├── modules_view.py         # Panel de gestión de submódulos
-│   ├── music/                  # Vistas específicas del reproductor musical
-│   │   └── main_view.py
+│   ├── __init__.py
+│   ├── dashboard_view.py       # Clase DashboardFrame
+│   ├── modules_view.py         # Clase ModulesFrame
+│   ├── music/                  # Vistas específicas del reproductor
+│   │   ├── __init__.py
+│   │   └── main_view.py        # Clase MusicFrame (Panel principal de música)
 │   ├── config/                 # Vistas de configuración y ajustes
-│   │   ├── general_view.py     # Ajustes generales (Tokens, IDs)
-│   │   ├── music_view.py       # Ajustes musicales (Mensajes, playlists)
-│   │   ├── ai_general_view.py  # Control de subprocesos IA
-│   │   ├── ai_settings_view.py # Filtros y límites de contexto
-│   │   ├── ai_engine_view.py   # Selección de motor (Nube vs Local)
-│   │   └── ai_presets_view.py  # Personalidades prefabricadas y Factory Reset
+│   │   ├── __init__.py
+│   │   ├── general_view.py
+│   │   ├── music_view.py
+│   │   ├── ai_general_view.py
+│   │   ├── ai_settings_view.py
+│   │   ├── ai_engine_view.py   # Renombrado: "Núcleo Cognitivo (Motor)"
+│   │   └── ai_presets_view.py  # Nueva: "Personalidades Prefabricadas"
 │   ├── ai/                     # Editores visuales de Memoria y Personalidad
+│   │   ├── __init__.py
 │   │   ├── identity_editor.py
 │   │   ├── moods_editor.py
 │   │   ├── moods_history_editor.py
@@ -132,43 +139,51 @@ MeowSick/
 │   │   ├── self_editor.py
 │   │   └── prompts_editor.py
 │   └── guides/                 # Interfaces de las guías de ayuda integradas
+│       ├── __init__.py
 │       ├── discord_guide_view.py
 │       ├── google_guide_view.py
 │       ├── id_guide_view.py
 │       ├── privacy_guide_view.py
 │       └── local_guide_view.py
+│
+├── themes/                     # [Temas Visuales] Paletas de colores en JSON
+│   └── dark.json               # Tema oscuro por defecto (migrado desde el dict COLORS de launcher.py)
+│
 ├── settings/                   # [Datos de Usuario] Configuraciones locales
-│   ├── config.json             # Ajustes globales, estados de los toggles y límites
+│   ├── config.json             # Ajustes globales, estados de toggles, límites, language y theme
 │   ├── outputs.json            # Textos personalizables de los mensajes del bot
 │   ├── .env                    # Tokens y API Keys (Discord, Google AI, etc.)
-│   └── locales/                # Sistema de internacionalización (es.json, en.json)
-├── themes/                     # [Temas Visuales] Paletas de colores dinámicas
-│   └── dark.json               # Tema oscuro base
-├── logs/                       # [Registros del Sistema]
-│   └── system.log              # Log con rotación automática (RotatingFileHandler)
+│   └── locales/                # Sistema de internacionalización
+│       ├── es.json             # Strings en Español
+│       └── en.json             # Strings en Inglés
+│
 ├── cogs/                       # [Backend] Módulos operacionales del Bot
 │   ├── help.py                 # Comando de ayuda nativo
 │   ├── music.py                # Motor asíncrono de audio, colas y descargas (yt-dlp)
 │   └── AI/                     # [Ecosistema Cognitivo de IA]
-│       ├── core.py             # Lóbulo Frontal (Chat, Visión, TTS, STT, Búsqueda web)
+│       ├── core.py             # Lóbulo Frontal (Chat, Visión, Búsqueda web)
 │       ├── memory.py           # Hipocampo (Extracción de hechos, juicios sociales, autoconcepto)
 │       ├── evolution.py        # Sistema Límbico (Análisis de humor pasivo y decaimiento)
 │       ├── identity.py         # Gestor dinámico de personalidad e inyección de contexto
-│       ├── utils.py            # Módem de red y llamadas a API (Gemini / Ollama)
-│       ├── tts_manager.py      # [Abstracción] Motores de Texto a Voz (Edge-TTS, Piper, etc.)
-│       ├── stt_manager.py      # [Abstracción] Motores de Voz a Texto (Whisper, Gemini Audio)
+│       ├── utils.py            # Módem de red y llamadas a API (Gemini / Ollama) + AIManager
+│       ├── tts_manager.py      # [Nuevo] Abstracción del motor TTS (Edge-TTS, Piper, etc.)
+│       ├── stt_manager.py      # [Nuevo] Abstracción del motor STT (Whisper, Gemini Audio, etc.)
 │       └── memory/             # [Base de Datos RAG Local] Archivos dinámicos de la IA
-│           ├── identity.txt            # Quién es la IA
-│           ├── guidelines.txt          # Reglas estrictas de comportamiento
-│           ├── known_users.json        # Registro de IDs conocidos y roles base
-│           ├── memoria.json            # Hechos biográficos por usuario
-│           ├── opiniones.json          # Nivel de afinidad y juicio por usuario
-│           ├── afinidad_rangos.json    # Reglas de respuesta según afinidad
-│           ├── autoconcepto.json       # Gustos descubiertos y creencias propias
-│           ├── estado_animo.json       # Emoción actual
-│           ├── historial_estados.json  # Log de cambios de humor
-│           ├── estados_posibles.json   # Lista de emociones permitidas
-│           └── prompts.json            # Instrucciones del sistema cognitivo (Subconsciente)
+│           ├── identity.txt
+│           ├── guidelines.txt
+│           ├── known_users.json
+│           ├── memoria.json
+│           ├── opiniones.json
+│           ├── afinidad_rangos.json
+│           ├── autoconcepto.json
+│           ├── estado_animo.json
+│           ├── historial_estados.json
+│           ├── estados_posibles.json
+│           └── prompts.json
+│
+├── logs/                       # [Sistema de Logging] Registros de eventos y errores
+│   └── system.log              # Log con rotación automática (generado en runtime)
+│
 └── res/                        # [Recursos Estáticos]
     ├── img/                    # Íconos, avatares y logos (.ico, .png)
     └── ffmpeg/                 # Binarios de codificación de audio (ffmpeg.exe)

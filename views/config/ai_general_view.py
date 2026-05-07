@@ -83,4 +83,4 @@ class AIGeneralConfigFrame(ctk.CTkFrame):
             cfg["ai_config"][key] = bool(switch.get())
         self.controller._save_json_file("config.json", cfg)
         if self.controller.bot_process:
-            self.controller.send_to_bot("CMD_RELOAD")
+            self.controller.send_to_bot('IPC>>{"type": "command", "name": "reload"}')

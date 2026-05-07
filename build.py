@@ -72,80 +72,49 @@ def create_clean_dist_files():
         
     os.makedirs(os.path.join(BUILD_TEMP_DIR, "logs"), exist_ok=True)
 
-    # 1.1b. Creación de outputs.json con mensajes genéricos por defecto
-    outputs_content = {
-        "welcome_message": "Meow... :3",
-        "playing_now": "▶ Reproduciendo ahora: **{title}**",
-        "added_queue": "✅ Añadido a la cola: **{title}**",
-        "play_no_args": "⚠️ Debes proporcionar un enlace o término de búsqueda.",
-        "connect_voice": "⚠️ Debes estar en un canal de voz para usar este comando.",
-        "playlist_added": "🎶 Playlist cargada: **{count}** canciones añadidas a la cola.",
-        "playlist_no_config": "⚠️ No hay una playlist configurada. Añade una URL en la configuración.",
-        "next_added": "⚡ Añadido como siguiente: **{title}**",
-        "skip_msg": "⏭ Canción saltada.",
-        "nothing_playing": "⚠️ No hay ninguna canción reproduciéndose.",
-        "paused": "⏸ Reproducción pausada.",
-        "resumed": "▶ Reproducción reanudada.",
-        "stop_msg": "⏹ Reproducción detenida y cola limpiada.",
-        "list_title": "🎵 Cola de Reproducción",
-        "list_empty": "📭 La cola está vacía.",
-        "shuffled": "🔀 Cola mezclada aleatoriamente.",
-        "shuffle_error": "⚠️ No hay suficientes canciones en la cola para mezclar.",
-        "queue_finished": "🏁 La cola de reproducción ha terminado.",
-        "timeout_msg": "💤 Me desconecto por inactividad.",
-        "disconnected": "👋 Desconectado del canal de voz.",
-        "not_connected": "⚠️ No estoy conectado a ningún canal de voz.",
-        "connect_error": "❌ Error al conectar al canal de voz.",
-        "search_error": "❌ Error al buscar o reproducir la canción.",
-        "ffmpeg_error": "❌ Error crítico: FFmpeg no está instalado o configurado correctamente."
-    }
-    with open(os.path.join(settings_dir, "outputs.json"), "w", encoding="utf-8") as f:
-        json.dump(outputs_content, f, indent=4, ensure_ascii=False)
-
-    # 1.1c. Creación de config.json base (Asegura el prefijo ! y módulos activos)
-    config_content = {
-        "language": "es",
-        "theme": "dark",
-        "prefix": "!",
-        "modules": {
-            "music": True,
-            "ia": True,
-            "help": True
-        },
-        "ai_config": {
-            "ai_engine": "local",
-            "ollama_endpoint": "http://localhost:11434",
-            "ollama_model": "gemma3",
-            "ollama_fallback": False,
-            "target_channels": [],
-            "listen_to_bots": True,
-            "enable_chat": True,
-            "enable_vision": True,
-            "enable_safety_filters": False,
-            "image_size_limit_mb": 8.0,
-            "enable_tts": True,
-            "tts_send_text": True,
-            "enable_stt": True,
-            "enable_web_search": True,
-            "auto_web_search": True,
-            "web_search_method": "google",
-            "web_search_max_results": 3,
-            "tts_voice": "es-MX-DaliaNeural",
-            "vision_lookback_limit": 10,
-            "gamer_mode": False,
-            "context_window": 15,
-            "mood_history_limit": 10,
-            "memory_buffer_limit": 5,
-            "mood_buffer_limit": 5,
-            "mood_decay_hours": 2.0,
-            "enable_history_limit": True,
-            "history_save_limit": 50,
-            "enable_mood_analysis": True,
-            "enable_memory_learning": True,
-            "aff_min": -100,
-            "aff_max": 100
+    # 1.1b. Configuración Base (Lee del entorno de dev y aplica una máscara de sanitización)
+    local_config_path = os.path.join("settings", "config.json")
+    
+    if os.path.exists(local_config_path):
+        with open(local_config_path, "r", encoding="utf-8") as f:
+            config_content = json.load(f)
+            
+        # Purgar/Sanitizar el estado de desarrollo para garantizar una distribución limpia
+        config_content["language"] = "es"
+        config_content["theme"] = "dark"
+        
+        if "modules" not in config_content: config_content["modules"] = {}
+        for mod in ["ia", "music", "help"]:
+            config_content["modules"][mod] = True # Obliga a que todos los módulos nazcan encendidos
+            
+        if "music_config" not in config_content: config_content["music_config"] = {}
+        
+        if "ai_config" not in config_content: config_content["ai_config"] = {}
+        config_content["ai_config"]["ai_engine"] = "local" # Privacidad por defecto
+        config_content["ai_config"]["target_channels"] = [] # Limpia las IDs privadas del desarrollador
+        config_content["ai_config"]["gamer_mode"] = False
+    else:
+        # Fallback de emergencia si falta el archivo local
+        config_content = {
+            "language": "es",
+            "theme": "dark",
+            "prefix": "!",
+            "modules": {"music": True, "ia": True, "help": True},
+            "music_config": {
+                "inactivity_sleep": 60,
+                "max_retries": 3,
+                "view_timeout": 60,
+                "ytdl_options": {},
+                "ffmpeg_options": {}
+            },
+            "ai_config": {
+                "ai_engine": "local", "ollama_endpoint": "http://localhost:11434", "ollama_model": "gemma3",
+                "target_channels": [], "listen_to_bots": True, "enable_chat": True, "enable_vision": True,
+                "enable_tts": True, "tts_send_text": True, "enable_stt": True, "enable_web_search": True,
+                "auto_web_search": True, "web_search_method": "google", "gamer_mode": False
+            }
         }
-    }
+
     with open(os.path.join(settings_dir, "config.json"), "w", encoding="utf-8") as f:
         json.dump(config_content, f, indent=4)
 

@@ -39,5 +39,10 @@
         "ollama_model": "gemma3:12b",
         "ollama_fallback": false,
         "gamer_mode": false
+    },
+    "music_config": {
+        "inactivity_sleep": 60,
+        "max_retries": 3,
+        "view_timeout": 60
     }
 }

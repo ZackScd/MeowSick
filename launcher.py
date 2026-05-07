@@ -465,7 +465,7 @@ class MeowLauncher(ctk.CTk):
         """
         if self.bot_process:
             self.log_to_console(self.lang_manager.get("msg_sending_stop"), "main")
-            self.send_to_bot("CMD_STOP")
+            self.send_to_bot("IPC>>" + json.dumps({"type": "command", "name": "stop"}))
 
     def read_output(self):
         """
@@ -487,39 +487,30 @@ class MeowLauncher(ctk.CTk):
                 # ═══ REGISTRO COMPLETO: recibe absolutamente todo, sin filtro ═══
                 self.after(0, lambda l=line: self._write_to_widget(self.console_errors, l))
 
-                # 0. PROTOCOLO IPC: Progreso de arranque de módulos internos.
-                if "IPC_PROGRESS:" in line:
+                # 0. PROTOCOLO IPC ESTRUCTURADO
+                if line.startswith("IPC>>"):
                     try:
-                        parts = line.split("IPC_PROGRESS:", 1)[1].strip().split(":", 1)
-                        if len(parts) == 2:
-                            pct = float(parts[0])
-                            msg = parts[1]
-                            self.after(0, lambda p=pct, m=msg: self._update_progress(p, m))
+                        payload = json.loads(line[5:])
+                        msg_type = payload.get("type")
+                        msg_name = payload.get("name")
+                        data = payload.get("payload")
+
+                        if msg_type == "event":
+                            if msg_name == "progress_update":
+                                self.after(0, lambda p=float(data["percent"]), m=data["message"]: self._update_progress(p, m))
+                            elif msg_name == "queue_update":
+                                self.after(0, lambda d=data: self.update_queue_ui(d))
+                            elif msg_name == "now_playing":
+                                self.after(0, lambda t=data["title"]: self.update_now_playing_ui(t))
                     except Exception: 
-                        logger.error("Error procesando IPC_PROGRESS", exc_info=True)
+                        logger.error("Error procesando IPC JSON", exc_info=True)
                     continue  # No mostrar en ninguna consola visual
-
-                # 1. PROTOCOLO IPC: Actualizaciones de la cola musical del servidor activo.
-                if "IPC_QUEUE_UPDATE:" in line:
-                    try:
-                        json_str = line.split("IPC_QUEUE_UPDATE:", 1)[1].strip()
-                        data = json.loads(json_str)
-                        self.after(0, lambda d=data: self.update_queue_ui(d))
-                    except Exception: 
-                        logger.error("Error procesando IPC_QUEUE_UPDATE", exc_info=True)
-                    continue  # No mostrar en consola
-
-                # Capturar canción actual para actualizar UI (Dinámico para cualquier idioma)
-                playing_prefix = self.lang_manager.get("sys_mus_playing_log").replace("{title}", "").strip()
-                if playing_prefix in line:
-                    title = line.split(playing_prefix, 1)[1].strip()
-                    self.after(0, lambda t=title: self.update_now_playing_ui(t))
 
                 # ═══ FILTRO DE TERMINAL LIMPIA (UX GUI) ═══
                 # Elimina logs ruidosos y de bajo nivel (Asyncio/Discord.py) para ofrecer una experiencia estética al humano.
                 line_stripped = line.strip()
                 is_noise = any(line_stripped.startswith(p) for p in NOISE_PREFIXES)
-                has_bot_emoji = any(e in line for e in ("🎵", "🧠", "⚙️", "📥", "📤", "✅", "❌", "⚠️", "💬", "💾", "🔑", "🌐", "🎙️", "📝", "✨", "💤", "📉", "🔁", "👁️", "IPC_PROGRESS", "[LAUNCHER]", "[WORKER", "[SISTEMA]", "[SHUTDOWN]", "[IPC]", "ENCENDIDO", "APAGADO", "Sesión iniciada", "Conexión con Discord", "Esperando comandos"))
+                has_bot_emoji = any(e in line for e in ("🎵", "🧠", "⚙️", "📥", "📤", "✅", "❌", "⚠️", "💬", "💾", "🔑", "🌐", "🎙️", "📝", "✨", "💤", "📉", "🔁", "🔄", "👁️", "📡", "🧹", "📦", "🛑", "👋", "🤖", "🧟", "💀", "[LAUNCHER]", "[WORKER", "[SISTEMA]", "[SHUTDOWN]", "[IPC]", "[ONLINE]"))
                 
                 if not is_noise or has_bot_emoji:
                     self.after(0, lambda l=line: self.log_to_console(l, "main"))
@@ -597,6 +588,22 @@ class MeowLauncher(ctk.CTk):
                 self.bot_process.stdin.write(text + "\n")
                 self.bot_process.stdin.flush()
             except Exception: logger.error("Error enviando comando IPC al bot", exc_info=True)
+            
+    def send_music_cmd(self, action):
+        """Transmisor IPC Estructurado para el módulo musical."""
+        if not self.bot_process: return
+        payload = {"type": "command", "name": f"music_{action}"}
+        
+        if action in ["play", "next"]:
+            if hasattr(self, 'music_entry'):
+                query = self.music_entry.get()
+                if query:
+                    payload["payload"] = {"query": query}
+                    self.music_entry.delete(0, 'end')
+                else:
+                    return
+                    
+        self.send_to_bot("IPC>>" + json.dumps(payload))
 
     # --- FUNCIONES DE MÚSICA ---
     def update_now_playing_ui(self, title):
@@ -659,7 +666,7 @@ class MeowLauncher(ctk.CTk):
             # Recarga en caliente si el bot está on
             if self.bot_process:
                 self.log_to_console(self.lang_manager.get("msg_module_toggle").format(module_name=module_name, new_state=new_state), "main")
-                self.send_to_bot("CMD_RELOAD")
+                self.send_to_bot("IPC>>" + json.dumps({"type": "command", "name": "reload"}))
         except Exception as e:
             print(self.lang_manager.get("msg_err_toggle").format(e=e))
 

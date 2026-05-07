@@ -149,6 +149,46 @@ class AISettingsConfigFrame(ctk.CTkFrame):
         self.entry_web_results.pack(side="left", padx=10)
         ctk.CTkLabel(wr_row, text=self.controller.lang_manager.get("cfg_ais_web_ddg_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
 
+        # --- AÑADIDO: VALORES MÁGICOS (AVANZADO) ---
+        ctk.CTkLabel(scroll, text=self.controller.lang_manager.get("cfg_ais_sec_adv"), font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=20, pady=(15, 5))
+        adv_card = ctk.CTkFrame(scroll, fg_color=self.controller.theme_manager.get("bg_card"), corner_radius=10)
+        adv_card.pack(fill="x", padx=20, pady=5)
+        
+        sp_row = ctk.CTkFrame(adv_card, fg_color="transparent")
+        sp_row.pack(fill="x", padx=15, pady=(15, 10))
+        ctk.CTkLabel(sp_row, text=self.controller.lang_manager.get("cfg_ais_adv_spont"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
+        self.entry_spontaneous_prob = ctk.CTkEntry(sp_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_spontaneous_prob.pack(side="left", padx=10)
+        ctk.CTkLabel(sp_row, text=self.controller.lang_manager.get("cfg_ais_adv_spont_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
+        
+        cd_row = ctk.CTkFrame(adv_card, fg_color="transparent")
+        cd_row.pack(fill="x", padx=15, pady=(0, 10))
+        ctk.CTkLabel(cd_row, text=self.controller.lang_manager.get("cfg_ais_adv_cool"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
+        self.entry_cooldown = ctk.CTkEntry(cd_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_cooldown.pack(side="left", padx=10)
+        ctk.CTkLabel(cd_row, text=self.controller.lang_manager.get("cfg_ais_adv_cool_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
+
+        gl_row = ctk.CTkFrame(adv_card, fg_color="transparent")
+        gl_row.pack(fill="x", padx=15, pady=(0, 10))
+        ctk.CTkLabel(gl_row, text=self.controller.lang_manager.get("cfg_ais_adv_gamer"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
+        self.entry_gamer_limit = ctk.CTkEntry(gl_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_gamer_limit.pack(side="left", padx=10)
+        ctk.CTkLabel(gl_row, text=self.controller.lang_manager.get("cfg_ais_adv_gamer_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
+
+        rp_row = ctk.CTkFrame(adv_card, fg_color="transparent")
+        rp_row.pack(fill="x", padx=15, pady=(0, 10))
+        ctk.CTkLabel(rp_row, text=self.controller.lang_manager.get("cfg_ais_adv_rep"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
+        self.entry_repeat_penalty = ctk.CTkEntry(rp_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_repeat_penalty.pack(side="left", padx=10)
+        ctk.CTkLabel(rp_row, text=self.controller.lang_manager.get("cfg_ais_adv_rep_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
+
+        ct_row = ctk.CTkFrame(adv_card, fg_color="transparent")
+        ct_row.pack(fill="x", padx=15, pady=(0, 15))
+        ctk.CTkLabel(ct_row, text=self.controller.lang_manager.get("cfg_ais_adv_timeout"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
+        self.entry_client_timeout = ctk.CTkEntry(ct_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_client_timeout.pack(side="left", padx=10)
+        ctk.CTkLabel(ct_row, text=self.controller.lang_manager.get("cfg_ais_adv_timeout_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
+
         # Sección 4: Almacenamiento en disco
         ctk.CTkLabel(scroll, text=self.controller.lang_manager.get("cfg_ais_sec_disk"), font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=20, pady=(20, 5))
         store_card = ctk.CTkFrame(scroll, fg_color=self.controller.theme_manager.get("bg_card"), corner_radius=10)
@@ -222,6 +262,21 @@ class AISettingsConfigFrame(ctk.CTkFrame):
         self.entry_web_results.delete(0, "end")
         self.entry_web_results.insert(0, str(ai_cfg.get("web_search_max_results", 3)))
 
+        self.entry_spontaneous_prob.delete(0, "end")
+        self.entry_spontaneous_prob.insert(0, str(ai_cfg.get("spontaneous_prob", 0.05)))
+        
+        self.entry_cooldown.delete(0, "end")
+        self.entry_cooldown.insert(0, str(ai_cfg.get("cooldown", 3.0)))
+        
+        self.entry_gamer_limit.delete(0, "end")
+        self.entry_gamer_limit.insert(0, str(ai_cfg.get("gamer_limit", 5)))
+        
+        self.entry_repeat_penalty.delete(0, "end")
+        self.entry_repeat_penalty.insert(0, str(ai_cfg.get("repeat_penalty", 1.1)))
+        
+        self.entry_client_timeout.delete(0, "end")
+        self.entry_client_timeout.insert(0, str(ai_cfg.get("client_timeout", 180)))
+
         self.entry_ai_mood_buffer.delete(0, "end")
         self.entry_ai_mood_buffer.insert(0, str(ai_cfg.get("mood_buffer_limit", 5)))
         
@@ -248,6 +303,21 @@ class AISettingsConfigFrame(ctk.CTkFrame):
         
         set_key(ENV_PATH, "AI_TARGET_CHANNELS", self.entry_ai_channels.get().strip())
         
+        try: cfg["ai_config"]["spontaneous_prob"] = float(self.entry_spontaneous_prob.get().strip())
+        except ValueError: cfg["ai_config"]["spontaneous_prob"] = 0.05
+        
+        try: cfg["ai_config"]["cooldown"] = float(self.entry_cooldown.get().strip())
+        except ValueError: cfg["ai_config"]["cooldown"] = 3.0
+        
+        try: cfg["ai_config"]["gamer_limit"] = int(self.entry_gamer_limit.get().strip())
+        except ValueError: cfg["ai_config"]["gamer_limit"] = 5
+        
+        try: cfg["ai_config"]["repeat_penalty"] = float(self.entry_repeat_penalty.get().strip())
+        except ValueError: cfg["ai_config"]["repeat_penalty"] = 1.1
+        
+        try: cfg["ai_config"]["client_timeout"] = int(self.entry_client_timeout.get().strip())
+        except ValueError: cfg["ai_config"]["client_timeout"] = 180
+
         try:
             cw_val = int(self.entry_ai_context.get().strip())
         except ValueError:
@@ -316,7 +386,7 @@ class AISettingsConfigFrame(ctk.CTkFrame):
         
         self.controller._save_json_file("config.json", cfg)
         self.lbl_status_ai_settings.configure(text=self.controller.lang_manager.get("cfg_ais_msg_reload"), text_color=self.controller.theme_manager.get("green"))
-        self.controller.send_to_bot("CMD_RELOAD")
+        self.controller.send_to_bot('IPC>>{"type": "command", "name": "reload"}')
         self.after(3000, lambda: self.lbl_status_ai_settings.configure(text=""))
 
     def reset_ai_settings(self):
@@ -338,7 +408,12 @@ class AISettingsConfigFrame(ctk.CTkFrame):
             "mood_buffer_limit": 5,
             "mood_decay_hours": 2.0,
             "enable_history_limit": True,
-            "history_save_limit": 50
+            "history_save_limit": 50,
+            "spontaneous_prob": 0.05,
+            "cooldown": 3.0,
+            "gamer_limit": 5,
+            "repeat_penalty": 1.1,
+            "client_timeout": 180
         }
         for k, v in defaults.items(): cfg["ai_config"][k] = v
         self.controller._save_json_file("config.json", cfg)

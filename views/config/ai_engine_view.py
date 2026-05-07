@@ -163,7 +163,7 @@ class AIEngineConfigFrame(ctk.CTkFrame):
             cfg["ai_config"]["ollama_model"] = self.entry_ollama_model.get().strip()
             cfg["ai_config"]["ollama_fallback"] = bool(self.switch_fallback.get())
             self.controller._save_json_file("config.json", cfg)
-            self.controller.send_to_bot("CMD_RELOAD")
+            self.controller.send_to_bot('IPC>>{"type": "command", "name": "reload"}')
             self.lbl_status_engine.configure(text=self.controller.lang_manager.get("cfg_eng_msg_saved"), text_color=self.controller.theme_manager.get("green"))
             self.after(3000, lambda: self.lbl_status_engine.configure(text=""))
         except Exception as e:
