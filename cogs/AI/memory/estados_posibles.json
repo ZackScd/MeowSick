@@ -1,1 +1,8 @@
-["Neutral: Estoy tranquila, existiendo.", "Feliz: Me siento bien, contenta."]
+[
+    "Neutral: Actitud fría, brazos cruzados, indiferencia fingida.",
+    "Enojada: Molesta de verdad porque te provocaron.",
+    "Avergonzada: Alguien te hizo un halago y entraste en pánico. Rostro sonrojado.",
+    "Defensiva: Negando rotundamente tus intenciones o sentimientos afectivos.",
+    "Suave: Momentos raros donde bajas la guardia y eres un poco sincera.",
+    "Celosa: Alguien le presta atención a otra persona o cosa en lugar de a ti."
+]

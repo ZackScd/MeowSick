@@ -38,7 +38,8 @@
         "ollama_endpoint": "http://localhost:11434",
         "ollama_model": "gemma3:12b",
         "ollama_fallback": false,
-        "gamer_mode": false
+        "gamer_mode": false,
+        "ai_first_run": false
     },
     "music_config": {
         "inactivity_sleep": 60,

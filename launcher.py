@@ -38,6 +38,8 @@ from views.ai.opinions_editor import OpinionsEditor
 from views.ai.ranges_editor import RangesEditor
 from views.ai.self_editor import SelfEditor
 from views.ai.prompts_editor import PromptsEditor
+from views.guides.wizard_view import WizardView
+from views.guides.ai_wizard_view import AIWizardView
 
 # --- CONFIGURACIÓN DE RUTAS Y VISUAL ---
 if getattr(sys, 'frozen', False):
@@ -107,7 +109,14 @@ class MeowLauncher(ctk.CTk):
 
         # Inicialización de la interfaz
         self.create_sidebar()
-        self.show_frame(DashboardFrame)
+        
+        env_data = dotenv_values(ENV_PATH)
+        token = env_data.get("DISCORD_TOKEN", "").strip()
+        if not token:
+            self.sidebar_frame.grid_remove() # Oculta la navegación
+            self.show_frame(WizardView)
+        else:
+            self.show_frame(DashboardFrame)
 
         # Hook de interrupción al cerrar la ventana (X)
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -141,6 +150,22 @@ class MeowLauncher(ctk.CTk):
             else:
                 self.warning_box.pack_forget()
                 self.logo_frame.pack(fill="both", expand=True)
+
+    def finish_wizard(self):
+        """
+        Método de transición llamado por el WizardView al terminar la configuración inicial.
+        Restaura la UI, aplica el nuevo idioma/tema y lleva al Dashboard.
+        """
+        config_data = self.config_manager.load_json(os.path.join(SETTINGS_DIR, "config.json")) or {}
+        self.lang_code = config_data.get("language", "es")
+        
+        if hasattr(self.lang_manager, "load_language"):
+            self.lang_manager.load_language(self.lang_code)
+            
+        self.title(self.lang_manager.get("app_title"))
+        self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
+        self.render_main_sidebar()
+        self.show_frame(DashboardFrame)
 
     def _fix_scroll(self, widget):
         """
@@ -313,24 +338,26 @@ class MeowLauncher(ctk.CTk):
         self.show_frame(GeneralConfigFrame)
 
     def render_ai_sidebar(self):
-        """Navegación: Menú Principal de Monitoreo y Edición de Memoria de la IA."""
         for widget in self.nav_container.winfo_children():
             widget.destroy()
 
         btn_opts = {"fg_color": self.theme_manager.get("bg_card"), "hover_color": self.theme_manager.get("border"), "text_color": self.theme_manager.get("text"), "height": 36, "corner_radius": 8, "anchor": "center"}
 
-        # 1. Sección Superior (Volver, General)
         top_frame = ctk.CTkFrame(self.nav_container, fg_color="transparent")
         top_frame.pack(side="top", fill="x")
 
         ctk.CTkButton(top_frame, text=self.lang_manager.get("nav_back"), command=self.exit_ai_menu, **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
+        
+        cfg = self._load_json_file("config.json")
+        if cfg.get("ai_config", {}).get("ai_first_run", True):
+            # Si es el primer arranque, el sidebar se queda bloqueado solo con el botón de Volver
+            return
+            
         ctk.CTkButton(top_frame, text=self.lang_manager.get("nav_ai_general"), command=lambda: self.show_frame(AIGeneralConfigFrame), **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
         ctk.CTkLabel(top_frame, text=self.lang_manager.get("nav_memory_editors_title"), font=ctk.CTkFont(size=12, weight="bold"), text_color=self.theme_manager.get("accent")).pack(padx=(16, 16), pady=(10, 0), fill="x", anchor="w")
 
-        # 2. Separador Superior
         ctk.CTkFrame(self.nav_container, height=2, fg_color=self.theme_manager.get("border")).pack(side="top", fill="x", padx=20, pady=10)
 
-        # 3. Lista Fija de Módulos (Editores)
         menu_ai = ctk.CTkFrame(self.nav_container, fg_color="transparent")
         menu_ai.pack(side="top", fill="x")
 
@@ -341,17 +368,20 @@ class MeowLauncher(ctk.CTk):
         ctk.CTkButton(menu_ai, text=self.lang_manager.get("nav_ai_opinions"), command=lambda: self.show_frame(OpinionsEditor), **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
         ctk.CTkButton(menu_ai, text=self.lang_manager.get("nav_ai_self"), command=lambda: self.show_frame(SelfEditor), **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
 
-        # 4. Botones de Acción (Anclados al fondo)
         bottom_frame = ctk.CTkFrame(self.nav_container, fg_color="transparent")
         bottom_frame.pack(side="bottom", fill="x")
         ctk.CTkButton(bottom_frame, text=self.lang_manager.get("nav_ai_reload_files"), command=self.reload_all_ai_files, **btn_opts).pack(padx=(12, 16), pady=6, fill="x")
 
-        # 5. Separador Inferior (Empaquetado DESPUÉS para que quede arriba del botón)
         ctk.CTkFrame(self.nav_container, height=2, fg_color=self.theme_manager.get("border")).pack(side="bottom", fill="x", padx=20, pady=10)
 
     def open_ai_menu(self):
         self.render_ai_sidebar()
-        self.show_frame(AIGeneralConfigFrame)
+        
+        cfg = self._load_json_file("config.json")
+        if cfg.get("ai_config", {}).get("ai_first_run", True):
+            self.show_frame(AIWizardView)
+        else:
+            self.show_frame(AIGeneralConfigFrame)
 
     def exit_ai_menu(self):
         self.render_main_sidebar()

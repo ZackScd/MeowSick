@@ -138,6 +138,21 @@ class Music(commands.Cog):
         self.outputs = self._load_json(f"locales/outputs_{lang_code}.json") or {} # Carga las traducciones y respuestas.
         self.last_contexts = {} # Persistencia del último contexto de comando recibido, vital para comandos IPC desde el Launcher.
 
+    async def cog_check(self, ctx):
+        """Comprobación global para todos los comandos del módulo de Música."""
+        # Excluye verificaciones si la llamada no proviene de un canal válido (e.g. contextos mock del IPC)
+        if not getattr(ctx, "channel", None):
+            return True
+            
+        music_channel_id = os.getenv("MUSIC_CHANNEL_ID")
+        if music_channel_id and music_channel_id.strip().isdigit():
+            expected_id = int(music_channel_id.strip())
+            if ctx.channel.id != expected_id:
+                try: await ctx.send(self.bot.lang.get("cmd_music_wrong_channel").format(channel_id=expected_id), delete_after=10)
+                except: pass
+                return False
+        return True
+
     def get_ytdl_options(self):
         base = {
             'format': 'bestaudio/best',

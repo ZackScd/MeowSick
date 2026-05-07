@@ -2,6 +2,7 @@ import customtkinter as ctk
 import os
 import sys
 from dotenv import set_key, dotenv_values
+from tkinter import messagebox
 
 from views.guides.discord_guide_view import DiscordGuideView
 from views.guides.id_guide_view import IdGuideView
@@ -63,7 +64,7 @@ class GeneralConfigFrame(ctk.CTkFrame):
                 ctk.CTkLabel(help_frame, text=f"ℹ {help_txt}", text_color=self.controller.theme_manager.get("text_dim"), font=ctk.CTkFont(size=11), anchor="w").pack(side="left")
                 
                 # Enlace a guía de IDs si corresponde
-                if key in ["ADMIN_ID", "WELCOME_CHANNEL_ID", "DISCORD_TOKEN"]:
+                if key in ["ADMIN_ID", "WELCOME_CHANNEL_ID", "MUSIC_CHANNEL_ID", "DISCORD_TOKEN"]:
                     guide_target = DiscordGuideView if key == "DISCORD_TOKEN" else IdGuideView
                     link_btn = ctk.CTkButton(help_frame, text=self.controller.lang_manager.get("cfg_gen_link_get_id"), width=90, height=20, fg_color="transparent", text_color=self.controller.theme_manager.get("accent"), font=ctk.CTkFont(size=11, underline=True), hover=False, command=lambda tgt=guide_target: self.controller.show_frame(tgt))
                     link_btn.configure(hover_color=self.controller.theme_manager.get("bg_card"))
@@ -71,10 +72,36 @@ class GeneralConfigFrame(ctk.CTkFrame):
 
                 ctk.CTkButton(row, text="?", width=28, height=28, fg_color=self.controller.theme_manager.get("bg_card"), hover_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"), command=lambda h=help_frame: self.controller.toggle_help(h, "pack", fill="x", padx=165)).pack(side="right")
 
+        def add_option_row(label, key, source, options, help_txt):
+            wrapper = ctk.CTkFrame(card, fg_color="transparent")
+            wrapper.pack(fill="x", pady=0)
+
+            row = ctk.CTkFrame(wrapper, fg_color="transparent")
+            row.pack(fill="x", pady=8, padx=15)
+            ctk.CTkLabel(row, text=label, width=150, anchor="w", text_color=self.controller.theme_manager.get("text")).pack(side="left")
+            
+            combo = ctk.CTkComboBox(row, values=options, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), dropdown_fg_color=self.controller.theme_manager.get("bg_card"), text_color=self.controller.theme_manager.get("text"))
+            combo.pack(side="left", fill="x", expand=True, padx=(10, 10))
+            
+            val = ""
+            if source == "config": val = config_data.get(key, options[0])
+            elif source == "outputs": val = outputs_data.get(key, options[0])
+            elif source == "env": val = env_data.get(key, options[0])
+            
+            combo.set(str(val))
+            self.general_entries[key] = (combo, source)
+            
+            if help_txt:
+                help_frame = ctk.CTkFrame(wrapper, fg_color="transparent")
+                ctk.CTkLabel(help_frame, text=f"ℹ {help_txt}", text_color=self.controller.theme_manager.get("text_dim"), font=ctk.CTkFont(size=11), anchor="w").pack(side="left")
+                ctk.CTkButton(row, text="?", width=28, height=28, fg_color=self.controller.theme_manager.get("bg_card"), hover_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"), command=lambda h=help_frame: self.controller.toggle_help(h, "pack", fill="x", padx=165)).pack(side="right")
+
+        add_option_row(self.controller.lang_manager.get("cfg_gen_language", "Idioma / Language"), "language", "config", ["es", "en"], self.controller.lang_manager.get("cfg_gen_help_language"))
         add_gen_row(self.controller.lang_manager.get("cfg_gen_token"), "DISCORD_TOKEN", "env", self.controller.lang_manager.get("cfg_gen_help_token"), is_password=True)
         add_gen_row(self.controller.lang_manager.get("cfg_gen_prefix"), "prefix", "config", self.controller.lang_manager.get("cfg_gen_help_prefix"))
         add_gen_row(self.controller.lang_manager.get("cfg_gen_admin_id"), "ADMIN_ID", "env", self.controller.lang_manager.get("cfg_gen_help_admin"))
         add_gen_row(self.controller.lang_manager.get("cfg_gen_welcome_id"), "WELCOME_CHANNEL_ID", "env", self.controller.lang_manager.get("cfg_gen_help_welcome"))
+        add_gen_row(self.controller.lang_manager.get("cfg_gen_music_id", "Canal Música ID"), "MUSIC_CHANNEL_ID", "env", self.controller.lang_manager.get("cfg_gen_help_music_id", "Opcional"))
         add_gen_row(self.controller.lang_manager.get("cfg_gen_welcome_msg"), "welcome_message", "outputs", self.controller.lang_manager.get("cfg_gen_help_welcome_msg"))
         add_gen_row(self.controller.lang_manager.get("cfg_gen_leave_msg"), "disconnected", "outputs", self.controller.lang_manager.get("cfg_gen_help_leave_msg"))
         add_gen_row(self.controller.lang_manager.get("cfg_gen_timeout_msg"), "timeout_msg", "outputs", self.controller.lang_manager.get("cfg_gen_help_timeout_msg"))
@@ -97,5 +124,12 @@ class GeneralConfigFrame(ctk.CTkFrame):
 
         self.controller._save_json_file("config.json", cfg)
         self.controller._save_json_file(outputs_filename, out)
+        
+        if cfg.get("language", "es") != self.controller.lang_code:
+            messagebox.showinfo(
+                "Restart Required",
+                "You have changed the language. Please restart the application to apply all changes properly."
+            )
+            
         self.lbl_status_general.configure(text=self.controller.lang_manager.get("msg_saved_success"), text_color=self.controller.theme_manager.get("green"))
         self.after(3000, lambda: self.lbl_status_general.configure(text=""))

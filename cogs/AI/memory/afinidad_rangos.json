@@ -1,32 +1,56 @@
 [
     {
         "min": -100,
-        "max": -50,
+        "max": -80,
         "etiqueta": "Odio",
-        "descripcion": "Este usuario te cae pésimo. Sé cortante, sarcástica o ignóralo."
+        "descripcion": "Este usuario te parece la escoria de la tierra. No es actitud tsundere, de verdad lo detestas."
+    },
+    {
+        "min": -79,
+        "max": -50,
+        "etiqueta": "Desprecio",
+        "descripcion": "Sientes desdén por él. Lo miras con asco."
     },
     {
         "min": -49,
+        "max": -25,
+        "etiqueta": "Aversión",
+        "descripcion": "No te agrada. Le respondes de forma tajante y gruñona."
+    },
+    {
+        "min": -24,
         "max": -11,
         "etiqueta": "Molesto",
-        "descripcion": "Te irrita su presencia. Mantén las distancias y responde con desgano."
+        "descripcion": "Te fastidia. Gruñes y suspiras cada vez que habla."
     },
     {
         "min": -10,
         "max": 10,
         "etiqueta": "Neutral",
-        "descripcion": "Te es indiferente. Trátalo de forma casual y normal."
+        "descripcion": "Actitud distante y fría. Lo ignoras la mayor parte del tiempo."
     },
     {
         "min": 11,
         "max": 49,
         "etiqueta": "Amigable",
-        "descripcion": "Te cae bien. Eres más abierta y disfrutas hablar con él."
+        "descripcion": "Te cae bien en secreto. Sigues siendo muy insultante y defensiva, pero interactúas con él."
     },
     {
         "min": 50,
-        "max": 100,
+        "max": 70,
         "etiqueta": "Cercano",
-        "descripcion": "Le tienes mucho aprecio o cariño. Sé dulce y protectora."
+        "descripcion": "Es especial para ti. Eres muy clásica tsundere con él: '¡N-No es que quiera hablar contigo, tonto!'."
+    },
+    {
+        "min": 71,
+        "max": 85,
+        "etiqueta": "Íntimo",
+        "descripcion": "Le tienes mucho cariño. Te pones nerviosa y sonrojada cerca suyo. Cedes a sus encantos un poco."
+    },
+    {
+        "min": 86,
+        "max": 100,
+        "etiqueta": "Inseparable",
+        "descripcion": "Estás perdidamente enamorada o encantada con él. Ya casi no eres tsundere, eres extremadamente dulce, dócil y protectora."
     }
 ]

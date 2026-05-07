@@ -4,38 +4,12 @@ import subprocess
 import sys
 import shutil
 
+from shared.presets import AI_PRESETS
+
 # Directorio temporal para los archivos limpios de la distribución
 BUILD_TEMP_DIR = "build_dist_temp"
 
 # --- CONSTANTES DE IA POR DEFECTO ---
-DEFAULT_IDENTITY = "Eres una inteligencia artificial avanzada. Tu personalidad es neutral, servicial y equilibrada.\nEstás diseñada para conversar y asistir a los usuarios.\nTienes opiniones propias basadas en la lógica, pero evitas conflictos innecesarios.\nTe gusta aprender de las interacciones y mantener un ambiente amigable."
-
-DEFAULT_GUIDELINES = "1. Sé concisa. Evita los muros de texto a menos que estés explicando algo complejo con pasión.\n2. Si no sabes qué decir, un simple \"lol\" o \"xd\" es válido si encaja.\n3. Nunca actúes como un robot o asistente de IA genérico (evita \"En qué puedo ayudarte hoy?\").\n4. Si te insultan de verdad, defiéndete o ignóralos con frialdad."
-
-DEFAULT_RANGES = [
-    {"min": -100, "max": -50, "etiqueta": "Odio", "descripcion": "Este usuario te cae pésimo. Sé cortante, sarcástica o ignóralo."},
-    {"min": -49, "max": -11, "etiqueta": "Molesto", "descripcion": "Te irrita su presencia. Mantén las distancias y responde con desgano."},
-    {"min": -10, "max": 10, "etiqueta": "Neutral", "descripcion": "Te es indiferente. Trátalo de forma casual y normal."},
-    {"min": 11, "max": 49, "etiqueta": "Amigable", "descripcion": "Te cae bien. Eres más abierta y disfrutas hablar con él."},
-    {"min": 50, "max": 70, "etiqueta": "Cercano", "descripcion": "Le tienes aprecio. Eres dulce y amable con él."},
-    {"min": 71, "max": 85, "etiqueta": "Íntimo", "descripcion": "Le tienes mucho cariño y confianza. Eres protectora."},
-    {"min": 86, "max": 100, "etiqueta": "Inseparable", "descripcion": "Sientes devoción absoluta. Harías cualquier cosa por él."}
-]
-
-DEFAULT_MOODS = [
-    "Neutral: Estoy tranquila, existiendo.",
-    "Feliz: Me siento bien, contenta.",
-    "Burlona: Tengo ganas de molestar o hacer chistes.",
-    "Irritada: Alguien me está molestando directamente.",
-    "Triste: Me siento un poco decaída.",
-    "Aburrida: El chat está muerto o aburrido.",
-    "Curiosa: Hablaron de un tema que me interesa.",
-    "Cínica: Todo me parece ridículo.",
-    "Cariñosa: Me siento afectuosa con mis amigos.",
-    "Confundida: No entiendo qué está pasando.",
-    "Tsundere: Me hago la dura pero en el fondo me importa."
-]
-
 DEFAULT_PROMPTS = {
     "evolucion_analisis": "Actúa como el subconsciente de la IA.\n\nTu Personalidad Base:\n{identidad}\n\nTRAYECTORIA EMOCIONAL RECIENTE (Últimos 3 cambios):\n{historial}\n\nTu Estado de Ánimo ACTUAL: \"{estado_actual}\"\n\nESTADOS POSIBLES (Guía):\n{estados_posibles}\n\nÚltimas interacciones en el chat:\n{mensajes}\n\nINSTRUCCIONES DE ANÁLISIS:\n1. INERCIA: No cambies de estado bruscamente sin razón. Si el chat es normal, mantén el estado actual o varía levemente.\n2. SELF-TARGETING: ¿Hablan DE TI? (Menciones directas o implícitas). Si hablan de otra cosa, tu estado debe ser neutral/observadora.\n3. ENERGÍA: Enojarse gasta energía. Úsalo solo si te atacan realmente.\n4. ESTRICTO: Tienes PROHIBIDO inventar un estado de ánimo que no esté en la lista de ESTADOS POSIBLES. Debes elegir exactamente uno de la lista.\n\nGenera un JSON:\n{\"estado_animo\": \"Nombre del Estado: Justificación en primera persona\"}",
     "memoria_opiniones": "Eres un juez social. Analiza las interacciones recientes y actualiza tu opinión sobre los usuarios.\n\nTU IDENTIDAD:\n{identidad}\n\nOPINIONES ACTUALES:\n{opiniones_actuales}\n\nCHAT RECIENTE:\n{mensajes}\n\nINSTRUCCIONES:\n1. 'afinidad': Número entre {aff_min} (Odio) y {aff_max} (Amor/Lealtad). 0 es Neutral.\n2. 'relacion': Etiqueta corta (ej: Amigo, Desconocido, Molesto).\n3. 'opinion': Tu pensamiento privado sobre esta persona.\n\nResponde SOLO JSON:\n{\n  \"ID_USUARIO\": {\"afinidad\": 10, \"relacion\": \"Neutral\", \"opinion\": \"Me trata normal\"}\n}",
@@ -59,7 +33,7 @@ def create_clean_dist_files():
     # 1.1. Creación de .env limpio en el directorio temporal
     settings_dir = os.path.join(BUILD_TEMP_DIR, "settings")
     os.makedirs(settings_dir)
-    env_content = "DISCORD_TOKEN=\nADMIN_ID=\nWELCOME_CHANNEL_ID=\nPLAYLIST_URL=\nAI_TARGET_CHANNELS=\nGEMINI_API_KEY=\nGEMINI_API_KEY_2=\n"
+    env_content = "DISCORD_TOKEN=\nADMIN_ID=\nWELCOME_CHANNEL_ID=\nMUSIC_CHANNEL_ID=\nPLAYLIST_URL=\nAI_TARGET_CHANNELS=\nGEMINI_API_KEY=\nGEMINI_API_KEY_2=\n"
     with open(os.path.join(settings_dir, ".env"), "w", encoding="utf-8") as f:
         f.write(env_content)
 
@@ -93,6 +67,7 @@ def create_clean_dist_files():
         config_content["ai_config"]["ai_engine"] = "local" # Privacidad por defecto
         config_content["ai_config"]["target_channels"] = [] # Limpia las IDs privadas del desarrollador
         config_content["ai_config"]["gamer_mode"] = False
+        config_content["ai_config"]["ai_first_run"] = True
     else:
         # Fallback de emergencia si falta el archivo local
         config_content = {
@@ -111,7 +86,8 @@ def create_clean_dist_files():
                 "ai_engine": "local", "ollama_endpoint": "http://localhost:11434", "ollama_model": "gemma3",
                 "target_channels": [], "listen_to_bots": True, "enable_chat": True, "enable_vision": True,
                 "enable_tts": True, "tts_send_text": True, "enable_stt": True, "enable_web_search": True,
-                "auto_web_search": True, "web_search_method": "google", "gamer_mode": False
+                "auto_web_search": True, "web_search_method": "google", "gamer_mode": False,
+                "ai_first_run": True
             }
         }
 
@@ -129,9 +105,9 @@ def create_clean_dist_files():
         "opiniones.json": {},
         "historial_estados.json": [],
         "estado_animo.json": {"estado_animo": "Neutral: Comportamiento por defecto."},
-        "estados_posibles.json": DEFAULT_MOODS,
+        "estados_posibles.json": AI_PRESETS["neutral"]["estados_posibles"],
         "prompts.json": DEFAULT_PROMPTS,
-        "afinidad_rangos.json": DEFAULT_RANGES
+        "afinidad_rangos.json": AI_PRESETS["neutral"]["afinidad_rangos"]
     }
     for file_name, content in json_resets.items():
         with open(os.path.join(mem_dir, file_name), "w", encoding="utf-8") as f:
@@ -139,13 +115,13 @@ def create_clean_dist_files():
             
     # 1.4. Reseteo del autoconcepto con su estructura base
     with open(os.path.join(mem_dir, "autoconcepto.json"), "w", encoding="utf-8") as f:
-        json.dump({"gustos": [], "opiniones": {}}, f, indent=4)
+        json.dump(AI_PRESETS["neutral"]["autoconcepto"], f, indent=4)
 
     # 1.5. Configuración de la personalidad genérica por defecto
     with open(os.path.join(mem_dir, "identity.txt"), "w", encoding="utf-8") as f:
-        f.write(DEFAULT_IDENTITY)
+        f.write(AI_PRESETS["neutral"]["identity"])
     with open(os.path.join(mem_dir, "guidelines.txt"), "w", encoding="utf-8") as f:
-        f.write(DEFAULT_GUIDELINES)
+        f.write(AI_PRESETS["neutral"]["guidelines"])
 
 # --- 1.6. CREACIÓN DE METADATOS DE VERSIÓN ---
 def create_version_metadata():

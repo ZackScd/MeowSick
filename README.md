@@ -104,7 +104,7 @@ MeowSick/
 ├── build.py                    # Script de compilación (PyInstaller) para empaquetado standalone
 ├── README.md                   # Documentación principal
 ├── ROADMAP.md                  # Plan de refactorización y hoja de ruta
-├── CHANGELOG.md                # Registro de cambios y versiones
+├── completeTask.md             # Historial de tareas y fases de refactorización completadas
 │
 ├── shared/                     # [Módulos Compartidos] Código reutilizable entre el Launcher y el Bot
 │   ├── __init__.py
