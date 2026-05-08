@@ -45,5 +45,7 @@
         "inactivity_sleep": 60,
         "max_retries": 3,
         "view_timeout": 60
-    }
+    },
+    "language": "es",
+    "theme": "dark"
 }

@@ -34,7 +34,7 @@ class AIGeneralConfigFrame(ctk.CTkFrame):
         self.controller.console_ai.configure(state="disabled")
 
         # Sección 1: Subprocesos (Switches)
-        ctk.CTkLabel(scroll, text=self.controller.lang_manager.get("cfg_ai_sub_title"), font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=20, pady=(10, 5))
+        ctk.CTkLabel(scroll, text=self.controller.lang_manager.get("cfg_ai_sub_title"), font=ctk.CTkFont(size=14, weight="bold"), text_color=self.controller.theme_manager.get("text"), anchor="w").pack(fill="x", padx=20, pady=(10, 5))
         proc_card = ctk.CTkFrame(scroll, fg_color=self.controller.theme_manager.get("bg_card"), corner_radius=10)
         proc_card.pack(fill="x", padx=20, pady=5)
 

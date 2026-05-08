@@ -22,7 +22,7 @@ class AISettingsConfigFrame(ctk.CTkFrame):
         scroll.pack(fill="both", expand=True)
 
         # Sección 1: Filtros
-        ctk.CTkLabel(scroll, text=self.controller.lang_manager.get("cfg_ais_sec_filters"), font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=20, pady=(10, 5))
+        ctk.CTkLabel(scroll, text=self.controller.lang_manager.get("cfg_ais_sec_filters"), font=ctk.CTkFont(size=14, weight="bold"), text_color=self.controller.theme_manager.get("text"), anchor="w").pack(fill="x", padx=20, pady=(10, 5))
         filt_card = ctk.CTkFrame(scroll, fg_color=self.controller.theme_manager.get("bg_card"), corner_radius=10)
         filt_card.pack(fill="x", padx=20, pady=5)
 
@@ -37,54 +37,54 @@ class AISettingsConfigFrame(ctk.CTkFrame):
         cw_row = ctk.CTkFrame(filt_card, fg_color="transparent")
         cw_row.pack(fill="x", padx=15, pady=(0, 15))
         ctk.CTkLabel(cw_row, text=self.controller.lang_manager.get("cfg_ais_ctx"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
-        self.entry_ai_context = ctk.CTkEntry(cw_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_ai_context = ctk.CTkEntry(cw_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"))
         self.entry_ai_context.pack(side="left", padx=10)
         ctk.CTkLabel(cw_row, text=self.controller.lang_manager.get("cfg_ais_ctx_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
 
         mh_row = ctk.CTkFrame(filt_card, fg_color="transparent")
         mh_row.pack(fill="x", padx=15, pady=(0, 15))
         ctk.CTkLabel(mh_row, text=self.controller.lang_manager.get("cfg_ais_mood_hist"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
-        self.entry_ai_mood_hist = ctk.CTkEntry(mh_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_ai_mood_hist = ctk.CTkEntry(mh_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"))
         self.entry_ai_mood_hist.pack(side="left", padx=10)
         ctk.CTkLabel(mh_row, text=self.controller.lang_manager.get("cfg_ais_mood_hist_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
 
         mb_row = ctk.CTkFrame(filt_card, fg_color="transparent")
         mb_row.pack(fill="x", padx=15, pady=(0, 15))
         ctk.CTkLabel(mb_row, text=self.controller.lang_manager.get("cfg_ais_mem_buf"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
-        self.entry_ai_mem_buffer = ctk.CTkEntry(mb_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_ai_mem_buffer = ctk.CTkEntry(mb_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"))
         self.entry_ai_mem_buffer.pack(side="left", padx=10)
         ctk.CTkLabel(mb_row, text=self.controller.lang_manager.get("cfg_ais_mem_buf_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
 
         il_row = ctk.CTkFrame(filt_card, fg_color="transparent")
         il_row.pack(fill="x", padx=15, pady=(0, 15))
         ctk.CTkLabel(il_row, text=self.controller.lang_manager.get("cfg_ais_img_limit"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
-        self.entry_ai_image_limit = ctk.CTkEntry(il_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_ai_image_limit = ctk.CTkEntry(il_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"))
         self.entry_ai_image_limit.pack(side="left", padx=10)
         ctk.CTkLabel(il_row, text=self.controller.lang_manager.get("cfg_ais_img_limit_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
 
         vl_row = ctk.CTkFrame(filt_card, fg_color="transparent")
         vl_row.pack(fill="x", padx=15, pady=(0, 15))
         ctk.CTkLabel(vl_row, text=self.controller.lang_manager.get("cfg_ais_vis_look"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
-        self.entry_ai_vision_lookback = ctk.CTkEntry(vl_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_ai_vision_lookback = ctk.CTkEntry(vl_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"))
         self.entry_ai_vision_lookback.pack(side="left", padx=10)
         ctk.CTkLabel(vl_row, text=self.controller.lang_manager.get("cfg_ais_vis_look_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
 
         eb_row = ctk.CTkFrame(filt_card, fg_color="transparent")
         eb_row.pack(fill="x", padx=15, pady=(0, 15))
         ctk.CTkLabel(eb_row, text=self.controller.lang_manager.get("cfg_ais_mood_buf"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
-        self.entry_ai_mood_buffer = ctk.CTkEntry(eb_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_ai_mood_buffer = ctk.CTkEntry(eb_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"))
         self.entry_ai_mood_buffer.pack(side="left", padx=10)
         ctk.CTkLabel(eb_row, text=self.controller.lang_manager.get("cfg_ais_mood_buf_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
 
         dh_row = ctk.CTkFrame(filt_card, fg_color="transparent")
         dh_row.pack(fill="x", padx=15, pady=(0, 15))
         ctk.CTkLabel(dh_row, text=self.controller.lang_manager.get("cfg_ais_decay"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
-        self.entry_ai_decay_hours = ctk.CTkEntry(dh_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_ai_decay_hours = ctk.CTkEntry(dh_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"))
         self.entry_ai_decay_hours.pack(side="left", padx=10)
         ctk.CTkLabel(dh_row, text=self.controller.lang_manager.get("cfg_ais_decay_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
 
         # Sección 2: Módulo de Voz (TTS)
-        ctk.CTkLabel(scroll, text=self.controller.lang_manager.get("cfg_ais_sec_tts"), font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=20, pady=(20, 5))
+        ctk.CTkLabel(scroll, text=self.controller.lang_manager.get("cfg_ais_sec_tts"), font=ctk.CTkFont(size=14, weight="bold"), text_color=self.controller.theme_manager.get("text"), anchor="w").pack(fill="x", padx=20, pady=(20, 5))
         tts_card = ctk.CTkFrame(scroll, fg_color=self.controller.theme_manager.get("bg_card"), corner_radius=10)
         tts_card.pack(fill="x", padx=20, pady=5)
 
@@ -122,7 +122,7 @@ class AISettingsConfigFrame(ctk.CTkFrame):
         self.switch_tts_text.pack(side="left", padx=10)
 
         # Sección 3: Búsqueda Web
-        ctk.CTkLabel(scroll, text=self.controller.lang_manager.get("cfg_ais_sec_web"), font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=20, pady=(15, 5))
+        ctk.CTkLabel(scroll, text=self.controller.lang_manager.get("cfg_ais_sec_web"), font=ctk.CTkFont(size=14, weight="bold"), text_color=self.controller.theme_manager.get("text"), anchor="w").pack(fill="x", padx=20, pady=(15, 5))
         web_card = ctk.CTkFrame(scroll, fg_color=self.controller.theme_manager.get("bg_card"), corner_radius=10)
         web_card.pack(fill="x", padx=20, pady=5)
 
@@ -145,52 +145,52 @@ class AISettingsConfigFrame(ctk.CTkFrame):
         wr_row = ctk.CTkFrame(web_card, fg_color="transparent")
         wr_row.pack(fill="x", padx=15, pady=(0, 15))
         ctk.CTkLabel(wr_row, text=self.controller.lang_manager.get("cfg_ais_web_ddg"), text_color=self.controller.theme_manager.get("text"), width=130, anchor="w").pack(side="left")
-        self.entry_web_results = ctk.CTkEntry(wr_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_web_results = ctk.CTkEntry(wr_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"))
         self.entry_web_results.pack(side="left", padx=10)
         ctk.CTkLabel(wr_row, text=self.controller.lang_manager.get("cfg_ais_web_ddg_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
 
         # --- AÑADIDO: VALORES MÁGICOS (AVANZADO) ---
-        ctk.CTkLabel(scroll, text=self.controller.lang_manager.get("cfg_ais_sec_adv"), font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=20, pady=(15, 5))
+        ctk.CTkLabel(scroll, text=self.controller.lang_manager.get("cfg_ais_sec_adv"), font=ctk.CTkFont(size=14, weight="bold"), text_color=self.controller.theme_manager.get("text"), anchor="w").pack(fill="x", padx=20, pady=(15, 5))
         adv_card = ctk.CTkFrame(scroll, fg_color=self.controller.theme_manager.get("bg_card"), corner_radius=10)
         adv_card.pack(fill="x", padx=20, pady=5)
         
         sp_row = ctk.CTkFrame(adv_card, fg_color="transparent")
         sp_row.pack(fill="x", padx=15, pady=(15, 10))
         ctk.CTkLabel(sp_row, text=self.controller.lang_manager.get("cfg_ais_adv_spont"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
-        self.entry_spontaneous_prob = ctk.CTkEntry(sp_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_spontaneous_prob = ctk.CTkEntry(sp_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"))
         self.entry_spontaneous_prob.pack(side="left", padx=10)
         ctk.CTkLabel(sp_row, text=self.controller.lang_manager.get("cfg_ais_adv_spont_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
         
         cd_row = ctk.CTkFrame(adv_card, fg_color="transparent")
         cd_row.pack(fill="x", padx=15, pady=(0, 10))
         ctk.CTkLabel(cd_row, text=self.controller.lang_manager.get("cfg_ais_adv_cool"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
-        self.entry_cooldown = ctk.CTkEntry(cd_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_cooldown = ctk.CTkEntry(cd_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"))
         self.entry_cooldown.pack(side="left", padx=10)
         ctk.CTkLabel(cd_row, text=self.controller.lang_manager.get("cfg_ais_adv_cool_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
 
         gl_row = ctk.CTkFrame(adv_card, fg_color="transparent")
         gl_row.pack(fill="x", padx=15, pady=(0, 10))
         ctk.CTkLabel(gl_row, text=self.controller.lang_manager.get("cfg_ais_adv_gamer"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
-        self.entry_gamer_limit = ctk.CTkEntry(gl_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_gamer_limit = ctk.CTkEntry(gl_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"))
         self.entry_gamer_limit.pack(side="left", padx=10)
         ctk.CTkLabel(gl_row, text=self.controller.lang_manager.get("cfg_ais_adv_gamer_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
 
         rp_row = ctk.CTkFrame(adv_card, fg_color="transparent")
         rp_row.pack(fill="x", padx=15, pady=(0, 10))
         ctk.CTkLabel(rp_row, text=self.controller.lang_manager.get("cfg_ais_adv_rep"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
-        self.entry_repeat_penalty = ctk.CTkEntry(rp_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_repeat_penalty = ctk.CTkEntry(rp_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"))
         self.entry_repeat_penalty.pack(side="left", padx=10)
         ctk.CTkLabel(rp_row, text=self.controller.lang_manager.get("cfg_ais_adv_rep_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
 
         ct_row = ctk.CTkFrame(adv_card, fg_color="transparent")
         ct_row.pack(fill="x", padx=15, pady=(0, 15))
         ctk.CTkLabel(ct_row, text=self.controller.lang_manager.get("cfg_ais_adv_timeout"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
-        self.entry_client_timeout = ctk.CTkEntry(ct_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_client_timeout = ctk.CTkEntry(ct_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"))
         self.entry_client_timeout.pack(side="left", padx=10)
         ctk.CTkLabel(ct_row, text=self.controller.lang_manager.get("cfg_ais_adv_timeout_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
 
         # Sección 4: Almacenamiento en disco
-        ctk.CTkLabel(scroll, text=self.controller.lang_manager.get("cfg_ais_sec_disk"), font=ctk.CTkFont(size=14, weight="bold"), anchor="w").pack(fill="x", padx=20, pady=(20, 5))
+        ctk.CTkLabel(scroll, text=self.controller.lang_manager.get("cfg_ais_sec_disk"), font=ctk.CTkFont(size=14, weight="bold"), text_color=self.controller.theme_manager.get("text"), anchor="w").pack(fill="x", padx=20, pady=(20, 5))
         store_card = ctk.CTkFrame(scroll, fg_color=self.controller.theme_manager.get("bg_card"), corner_radius=10)
         store_card.pack(fill="x", padx=20, pady=5)
 
@@ -208,7 +208,7 @@ class AISettingsConfigFrame(ctk.CTkFrame):
         self.hl_entry_row = ctk.CTkFrame(store_card, fg_color="transparent")
         self.hl_entry_row.pack(fill="x", padx=15, pady=(0, 15))
         ctk.CTkLabel(self.hl_entry_row, text=self.controller.lang_manager.get("cfg_ais_disk_max"), text_color=self.controller.theme_manager.get("text")).pack(side="left")
-        self.entry_history_limit_max = ctk.CTkEntry(self.hl_entry_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"))
+        self.entry_history_limit_max = ctk.CTkEntry(self.hl_entry_row, width=60, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), text_color=self.controller.theme_manager.get("text"))
         self.entry_history_limit_max.pack(side="left", padx=10)
         ctk.CTkLabel(self.hl_entry_row, text=self.controller.lang_manager.get("cfg_ais_disk_max_desc"), font=ctk.CTkFont(size=11), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left")
 

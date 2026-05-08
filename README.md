@@ -110,7 +110,8 @@ MeowSick/
 │   ├── __init__.py
 │   ├── config_manager.py       # Gestor centralizado de lectura/escritura JSON (D.R.Y)
 │   ├── theme_manager.py        # Carga dinámica de paletas de colores desde themes/
-│   └── language_manager.py     # Sistema de internacionalización (i18n), carga strings desde locales/
+│   ├── language_manager.py     # Sistema de internacionalización (i18n), carga strings desde locales/
+│   └── presets.py              # [NUEVO] Gestor de personalidades prefabricadas
 │
 ├── views/                      # [Vistas UI] Archivos modulares de la interfaz gráfica (Lazy Loading)
 │   ├── __init__.py
@@ -125,8 +126,8 @@ MeowSick/
 │   │   ├── music_view.py
 │   │   ├── ai_general_view.py
 │   │   ├── ai_settings_view.py
-│   │   ├── ai_engine_view.py   # Renombrado: "Núcleo Cognitivo (Motor)"
-│   │   └── ai_presets_view.py  # Nueva: "Personalidades Prefabricadas"
+│   │   ├── ai_engine_view.py
+│   │   └── ai_amnesia_view.py    # Renombrado: "Personalidad y Reseteo"
 │   ├── ai/                     # Editores visuales de Memoria y Personalidad
 │   │   ├── __init__.py
 │   │   ├── identity_editor.py
@@ -144,7 +145,9 @@ MeowSick/
 │       ├── google_guide_view.py
 │       ├── id_guide_view.py
 │       ├── privacy_guide_view.py
-│       └── local_guide_view.py
+│       ├── local_guide_view.py
+│       ├── wizard_view.py          # [NUEVO] Asistente de configuración inicial
+│       └── ai_wizard_view.py       # [NUEVO] Asistente de personalidad de IA
 │
 ├── themes/                     # [Temas Visuales] Paletas de colores en JSON
 │   └── dark.json               # Tema oscuro por defecto (migrado desde el dict COLORS de launcher.py)

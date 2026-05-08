@@ -180,6 +180,7 @@ class Music(commands.Cog):
         }
         music_cfg = self.config.get("music_config", {})
         base.update(music_cfg.get("ffmpeg_options", {}))
+                
         return base
 
     def _load_json(self, filename):
@@ -219,21 +220,49 @@ class Music(commands.Cog):
     async def ipc_invoke(self, guild_id, action, arg=""):
         """Invocador directo para comandos IPC desde el Launcher sin simular comandos de Discord."""
         ctx = self.last_contexts.get(guild_id)
-        if not ctx:
-            print(self.bot.lang.get("sys_ipc_mus_no_ctx").format(guild=guild_id))
-            return
+        
+        # Creación de un "MockCtx" (Contexto falso robusto) si el bot no tiene memoria reciente
+        if not ctx or not getattr(ctx.author, "voice", None):
+            guild = self.bot.get_guild(guild_id)
+            if guild:
+                target = None
+                for vc in guild.voice_channels:
+                    for m in vc.members:
+                        if not m.bot:
+                            target = m
+                            break
+                    if target: break
+                if not target: target = guild.owner or guild.members[0]
+                
+                music_id = os.getenv("MUSIC_CHANNEL_ID")
+                chan = guild.get_channel(int(music_id)) if music_id and music_id.isdigit() else guild.text_channels[0]
+                
+                class MockCtx:
+                    def __init__(self, b, g, c, a):
+                        self.bot, self.guild, self.channel, self.author = b, g, c, a
+                    @property
+                    def voice_client(self): return self.guild.voice_client
+                    async def send(self, *args, **kwargs):
+                        try: return await self.channel.send(*args, **kwargs)
+                        except: pass
+                    def typing(self): return self.channel.typing()
+                
+                ctx = MockCtx(self.bot, guild, chan, target)
+                self.last_contexts[guild_id] = ctx
+
+        if not ctx: return
         
         commands_map = {
-            "play": self.play.coro,
-            "stop": self.stop.coro,
-            "skip": self.skip.coro,
-            "pause": self.pause.coro,
-            "resume": self.resume.coro,
-            "list": self.queue_list.coro,
-            "shuffle": self.shuffle.coro,
-            "leave": self.leave.coro,
-            "next": self.next_song.coro,
-            "pls": self.pls.coro
+            "play": getattr(self.play, "callback", getattr(self.play, "coro", None)),
+            "stop": getattr(self.stop, "callback", getattr(self.stop, "coro", None)),
+            "skip": getattr(self.skip, "callback", getattr(self.skip, "coro", None)),
+            "pause": getattr(self.pause, "callback", getattr(self.pause, "coro", None)),
+            "resume": getattr(self.resume, "callback", getattr(self.resume, "coro", None)),
+            "list": getattr(self.queue_list, "callback", getattr(self.queue_list, "coro", None)),
+            "shuffle": getattr(self.shuffle, "callback", getattr(self.shuffle, "coro", None)),
+            "leave": getattr(self.leave, "callback", getattr(self.leave, "coro", None)),
+            "next": getattr(self.next_song, "callback", getattr(self.next_song, "coro", None)),
+            "pls": getattr(self.pls, "callback", getattr(self.pls, "coro", None))
         }
         
         coro = commands_map.get(action)

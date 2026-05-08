@@ -413,3 +413,109 @@ Una vez que la estructura del código esté limpia y estabilizada, se procederá
   - [x] Parametrizar variables duras en `core.py`, `music.py` y `utils.py` hacia `config.json`.
 - [x] **Tarea 17: Robustecer el Sistema IPC**
   - [x] Migrar a JSON estructurado (`{"type": "...", "name": "...", ...}`) con prefijo de seguridad `IPC>>` y actualizar los parsers.
+
+
+---
+
+### Fase 6: Mejoras de Calidad de Vida (QoL) y UI
+
+#### 📌 Tarea 19: Selector de Idioma Dinámico en Interfaz
+- **Fase de Análisis Previo (Obligatorio):**
+  - **Detalles, Problema y Mejoras:** 
+  Actualmente el sistema soporta i18n y lee `"language": "es"` desde el `config.json`, pero no existe ningún control visual para cambiarlo. Se debe añadir esta opción en el panel para evitar ediciones manuales del JSON. Dado que varias vistas de configuración leen el archivo `outputs_{lang}.json` basado en el idioma cargado en memoria al arrancar, cambiar el idioma en caliente sin reiniciar podría causar escrituras cruzadas de diccionarios. Se requiere exigir un reinicio de la aplicación tras el cambio.
+  - **Archivos a modificar y dependencias:**
+    - `settings/locales/es.json` (y `en.json`): Añadir las traducciones (`cfg_gen_language`, `cfg_gen_help_language`, `msg_restart_title`, `msg_restart_required`).
+    - `views/config/general_view.py`: 
+      - Dependencias: Importar `from tkinter import messagebox`.
+      - Clase `GeneralConfigFrame`: Crear el helper `add_option_row(label, key, source, options, help_txt)` que implemente un `CTkComboBox` con los valores disponibles. Inyectar la fila de idioma justo antes de "Token de Discord".
+      - Método `save_general_config`: Recuperar el nuevo idioma desde el widget. Antes de finalizar, comparar el nuevo idioma guardado con `self.controller.lang_code`. Si difieren, lanzar `messagebox.showinfo` bloqueante pidiendo un reinicio manual de la UI.
+
+- **Checklist de Implementación:**
+  - [x] `settings/locales/es.json` (y `en.json`): Añadir las nuevas claves de texto.
+  - [x] `views/config/general_view.py`: Importar `from tkinter import messagebox`.
+  - [x] `views/config/general_view.py`: Crear la función auxiliar `add_option_row` dentro de `__init__`.
+  - [x] `views/config/general_view.py`: Añadir la fila de configuración para `language` usando `add_option_row`.
+  - [x] `views/config/general_view.py`: Modificar `save_general_config` para capturar y guardar el idioma en `config.json`.
+  - [x] `views/config/general_view.py`: Añadir condicional en `save_general_config` para disparar el popup de reinicio si el idioma cambió.
+
+#### 📌 Tarea 20: Asistente de Configuración Inicial (Wizard)
+- **Fase de Análisis Previo (Obligatorio):**
+  - **Detalles, Problema y Mejoras:** 
+  Actualmente, un usuario nuevo puede sentirse perdido al abrir la aplicación si no sabe que debe ir primero a "Configuración General" a poner su Token. Se requiere implementar un "Wizard" (Asistente paso a paso) de bienvenida que bloquee el acceso al Dashboard principal hasta que las variables críticas (`DISCORD_TOKEN`, Idioma y Tema) estén configuradas (estableciendo "dark" por defecto para el tema).
+  - **Archivos a modificar y dependencias:**
+    - `launcher.py`: 
+      - Método `__init__`: Añadir lógica para leer `dotenv_values(ENV_PATH).get("DISCORD_TOKEN")`. Si está vacío o es nulo, invocar `self.show_frame(WizardView)` en lugar de `DashboardFrame`.
+      - Método `__init__`: Ocultar la barra lateral (`self.sidebar_frame.grid_remove()`) si el Wizard está activo para evitar fugas de navegación.
+      - Nuevo Método `finish_wizard()`: Restaurar la barra lateral (`grid()`), recargar la instancia de `LanguageManager` por si el usuario cambió el idioma, y redirigir al `DashboardFrame`.
+    - `views/guides/wizard_view.py`: 
+      - (Archivo Nuevo) Crear la clase `WizardView(ctk.CTkFrame)` con un diseño secuencial (paso 1: Idioma y Tema Visual, paso 2: Token de Discord y Admin ID).
+      - Importar y usar `dotenv.set_key` para guardar las credenciales ingresadas directamente a disco.
+    - `settings/locales/es.json` (y `en.json`): 
+      - Inyectar las nuevas claves de traducción necesarias para la UI del Wizard (ej: `wizard_title`, `wizard_step_1`, `wizard_theme`, `wizard_btn_next`, `wizard_finish`).
+
+- **Checklist de Implementación:**
+  - [x] `settings/locales/es.json` (y `en.json`): Añadir las claves de texto del Wizard.
+  - [x] `views/guides/wizard_view.py`: Crear el archivo y desarrollar la lógica de UI por pasos, integrando el selector de temas.
+  - [x] `launcher.py`: Importar `WizardView` de forma compatible con carga perezosa.
+  - [x] `launcher.py`: Modificar el `__init__` para evaluar el `DISCORD_TOKEN` ocultando `sidebar_frame` si no existe.
+  - [x] `launcher.py`: Implementar `finish_wizard()` para reactivar la barra lateral y recargar el controlador de idioma.
+  - [x] `settings/.env`: Eliminar el token manualmente en el entorno de desarrollo para comprobar el bloqueo de la UI.
+
+#### 📌 Tarea 21: Restricción de Canal para Módulo de Música
+- **Fase de Análisis Previo (Obligatorio):**
+  - **Detalles, Problema y Mejoras:** 
+  Actualmente, los comandos de música pueden ser invocados en cualquier canal de texto, lo que genera spam de respuestas (Now playing, Queued, etc.) y ensucia las conversaciones generales. Se requiere independizar la variable `MUSIC_CHANNEL_ID` para que el bot bloquee los comandos musicales si no se ejecutan en su canal designado.
+  - **Archivos a modificar y dependencias:**
+    - `build.py`: 
+      - `create_clean_dist_files()`: Inyectar `MUSIC_CHANNEL_ID=\n` en la constante `.env` virgen.
+    - `views/config/general_view.py`: En `GeneralConfigFrame.__init__`, añadir el widget `add_gen_row` para el nuevo canal de música.
+    - `cogs/music.py`: Añadir un `cog_check(self, ctx)` global en la clase `Music` que cancele la ejecución si `os.getenv("MUSIC_CHANNEL_ID")` está configurado y el canal del comando no coincide.
+    - `settings/locales/es.json` (y `en.json`): Añadir los textos de interfaz (`cfg_gen_music_id`, `cfg_gen_help_music_id`) y el mensaje de error del bot (`cmd_music_wrong_channel`).
+
+- **Checklist de Implementación:**
+  - [x] `build.py`: Añadir inyección de `MUSIC_CHANNEL_ID` en `env_content`.
+  - [x] `settings/locales/es.json` (y `en.json`): Agregar las claves de idiomas correspondientes.
+  - [x] `views/config/general_view.py`: Añadir el widget visual para `MUSIC_CHANNEL_ID`.
+  - [x] `cogs/music.py`: Agregar comprobación global (`cog_check`) para bloquear la invocación de comandos musicales en canales ajenos.
+
+#### 📌 Tarea 22: Ampliación de Personalidades Prefabricadas
+- **Fase de Análisis Previo (Obligatorio):**
+  - **Detalles, Problema y Mejoras:** 
+  La IA solo trae una personalidad "Neutral" por defecto. Se requiere implementar un nuevo Wizard de Primer Arranque exclusivo para el módulo de IA que permita elegir una personalidad prefabricada viendo un resumen y sus detalles. Es crucial que cada personalidad prefabricada defina **sus propios estados de ánimo y sus propios rangos de afinidad**, ya que la forma en que la IA demuestra "odio" o "amor" debe ir estrictamente ligada a su identidad (ej. una Tsundere no expresa afecto igual que un Asistente Formal). Además, la vista actual de `ai_amnesia_view.py` se debe refactorizar para separar claramente "Cambiar Personalidad" (con casillas modulares) de "Limpiar Memoria" (borrado de usuarios, hechos). Todo alimentado desde un nuevo gestor unificado `shared/presets.py`.
+  - **Archivos a modificar y dependencias:**
+    - `shared/presets.py`: (Archivo Nuevo) Contendrá los perfiles (Neutral, Tsundere, Gamer). Cada perfil incluirá `summary`, `identity`, `guidelines`, `estados_posibles`, `autoconcepto` (gustos por defecto) y `afinidad_rangos`.
+    - `settings/config.json`: Añadir y gestionar la bandera `"ai_first_run": true`.
+    - `views/guides/ai_wizard_view.py`: (Archivo Nuevo) Wizard que obligue a elegir un preset al entrar a la configuración de IA por primera vez.
+    - `launcher.py`: En `render_main_sidebar` o en `open_ai_menu`, interceptar la navegación si `ai_first_run` es verdadero, mostrando `AIWizardView`.
+    - `build.py`: Limpiar constantes, importar desde `shared/presets.py` e inyectar `"ai_first_run": true` en el entorno virgen.
+    - `views/config/ai_amnesia_view.py`: Dividir en dos secciones visuales: 1) Cambiar Personalidad (Selector de preset, visualización de resumen y checkboxes modulares para aplicar solo lo deseado). 2) Limpiar Memoria (Borrado de usuarios, opiniones, hechos y reseteo de prompts).
+    - `settings/locales/es.json` (y `en.json`): Agregar traducciones del nuevo Wizard de IA y de la vista dividida de amnesia.
+
+- **Checklist de Implementación:**
+  - [x] `shared/presets.py`: Crear el archivo extrayendo la personalidad Neutral base como prueba estructural.
+  - [x] `build.py`: Consumir `presets.py` para construir archivos vírgenes e inyectar `"ai_first_run": true` en `config.json`.
+  - [x] `settings/locales/es.json` (y `en.json`): Añadir los textos de interfaz para el AI Wizard.
+  - [x] `views/guides/ai_wizard_view.py`: Programar el nuevo asistente con previsualización detallada de la personalidad elegida.
+  - [x] `launcher.py`: Implementar el bloqueo/redirección hacia el AI Wizard la primera vez que se hace clic en la sección de IA.
+  - [x] `views/config/ai_amnesia_view.py`: Refactorizar la UI para tener "Cambiar Personalidad" (modular) y "Limpiar Memoria/Sistema" (borrado).
+  - [x] `views/config/ai_amnesia_view.py`: Implementar la lógica de "Aplicar Personalidad" para que sobreescriba solo las casillas marcadas e invoque el IPC.
+
+#### 📌 Tarea 23: Expansión de Temas Visuales y Colores Custom
+- **Fase de Análisis Previo (Obligatorio):**
+  - **Detalles, Problema y Mejoras:** 
+  El ThemeManager actual está parcialmente hardcodeado en `launcher.py` para cargar siempre `"dark"`. Añadir más temas base y una herramienta de personalización de colores HEX permite adaptar la interfaz a los gustos específicos de cada servidor. Se decidió crear un entorno independiente de "Previsualización en tiempo real" (Ventana Toplevel) para ver los cambios antes de guardarlos.
+  - **Archivos a modificar y dependencias:**
+    - `launcher.py`: Modificar la inyección de `ThemeManager` para leer el estado guardado.
+    - `themes/`: Crear físicamente los archivos prefabricados `light.json` y `midnight.json`.
+    - `views/config/general_view.py`: Añadir menú de temas e instanciar la clase `ThemeEditorWindow` como Toplevel.
+    - `settings/locales/es.json` (y `en.json`): Nuevas claves para la UI (`cfg_gen_theme`, `cfg_gen_theme_editor`, `msg_restart_theme`).
+
+- **Checklist de Implementación:**
+  - [x] `themes/`: Crear físicamente los archivos base `light.json` (escala Zinc) y `midnight.json` (OLED).
+  - [x] `launcher.py`: Modificar el `__init__` para inyectar el tema desde `config.json` en lugar del `"dark"` estático.
+  - [x] `shared/theme_manager.py`: Añadir métodos de lectura dinámica de directorio y guardado custom.
+  - [x] `settings/locales/es.json` (y `en.json`): Añadir claves de texto para la nueva interfaz.
+  - [x] `views/config/general_view.py`: Integrar `CTkOptionMenu` que guarde la variable temática.
+  - [x] `views/config/general_view.py`: Añadir la interfaz de edición HEX en ventana dedicada (Toplevel) con Previsualización.
+  - [x] `views/config/general_view.py`: Implementar el popup de aviso de reinicio al cambiar de colores visuales.
+  - [x] `views/config/general_view.py`: Implementar "Efecto Negativo/Complementario" en tiempo real al hacer hover sobre los campos.

@@ -295,11 +295,15 @@ async def console_listener(bot):
                             arg = data.get("payload", {}).get("query", "")
                             
                             if not bot.voice_clients:
-                                print(bot.lang.get("sys_ipc_mus_no_vc"))
-                                continue
-                            
-                            vc = bot.voice_clients[0]
-                            guild_id = vc.guild.id
+                                if action not in ["play", "next", "pls", "playlist"]:
+                                    print(bot.lang.get("sys_ipc_mus_no_vc"))
+                                    continue
+                                if not bot.guilds:
+                                    continue
+                                guild_id = bot.guilds[0].id
+                            else:
+                                vc = bot.voice_clients[0]
+                                guild_id = vc.guild.id
                             
                             music_cog = bot.get_cog("Music")
                             if not music_cog:

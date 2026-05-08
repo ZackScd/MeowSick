@@ -44,32 +44,32 @@ class AIWizardView(ctk.CTkFrame):
         ctk.CTkFrame(self.scroll, height=2, fg_color=self.controller.theme_manager.get("border")).pack(fill="x", padx=30, pady=15)
         
         ctk.CTkLabel(self.scroll, text=self.controller.lang_manager.get("ai_wiz_summary", "Resumen:"), font=ctk.CTkFont(weight="bold"), text_color=self.controller.theme_manager.get("text_dim")).pack(anchor="w", padx=30, pady=(5, 0))
-        self.txt_summary = ctk.CTkTextbox(self.scroll, height=100, font=("Consolas", 13), fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), border_width=1)
+        self.txt_summary = ctk.CTkTextbox(self.scroll, height=100, font=("Consolas", 13), fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), border_width=1, text_color=self.controller.theme_manager.get("text"))
         self.txt_summary.pack(fill="x", padx=30, pady=(5, 10))
         self.controller._fix_scroll(self.txt_summary)
         
         ctk.CTkLabel(self.scroll, text=self.controller.lang_manager.get("ai_id_lbl_identity", "Identidad (System Prompt Base):"), font=ctk.CTkFont(weight="bold"), text_color=self.controller.theme_manager.get("text_dim")).pack(anchor="w", padx=30, pady=(10, 0))
-        self.txt_identity = ctk.CTkTextbox(self.scroll, height=120, font=("Consolas", 13), fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), border_width=1)
+        self.txt_identity = ctk.CTkTextbox(self.scroll, height=120, font=("Consolas", 13), fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), border_width=1, text_color=self.controller.theme_manager.get("text"))
         self.txt_identity.pack(fill="x", padx=30, pady=(5, 10))
         self.controller._fix_scroll(self.txt_identity)
 
         ctk.CTkLabel(self.scroll, text=self.controller.lang_manager.get("ai_id_lbl_guidelines", "Guidelines (Reglas de Comportamiento):"), font=ctk.CTkFont(weight="bold"), text_color=self.controller.theme_manager.get("text_dim")).pack(anchor="w", padx=30, pady=(10, 0))
-        self.txt_guidelines = ctk.CTkTextbox(self.scroll, height=120, font=("Consolas", 13), fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), border_width=1)
+        self.txt_guidelines = ctk.CTkTextbox(self.scroll, height=120, font=("Consolas", 13), fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), border_width=1, text_color=self.controller.theme_manager.get("text"))
         self.txt_guidelines.pack(fill="x", padx=30, pady=(5, 10))
         self.controller._fix_scroll(self.txt_guidelines)
         
         ctk.CTkLabel(self.scroll, text="Estados de Ánimo Posibles:", font=ctk.CTkFont(weight="bold"), text_color=self.controller.theme_manager.get("text_dim")).pack(anchor="w", padx=30, pady=(10, 0))
-        self.txt_moods = ctk.CTkTextbox(self.scroll, height=120, font=("Consolas", 13), fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), border_width=1)
+        self.txt_moods = ctk.CTkTextbox(self.scroll, height=120, font=("Consolas", 13), fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), border_width=1, text_color=self.controller.theme_manager.get("text"))
         self.txt_moods.pack(fill="x", padx=30, pady=(5, 10))
         self.controller._fix_scroll(self.txt_moods)
 
         ctk.CTkLabel(self.scroll, text="Rangos de Afinidad:", font=ctk.CTkFont(weight="bold"), text_color=self.controller.theme_manager.get("text_dim")).pack(anchor="w", padx=30, pady=(10, 0))
-        self.txt_aff = ctk.CTkTextbox(self.scroll, height=120, font=("Consolas", 13), fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), border_width=1)
+        self.txt_aff = ctk.CTkTextbox(self.scroll, height=120, font=("Consolas", 13), fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), border_width=1, text_color=self.controller.theme_manager.get("text"))
         self.txt_aff.pack(fill="x", padx=30, pady=(5, 10))
         self.controller._fix_scroll(self.txt_aff)
 
         ctk.CTkLabel(self.scroll, text="Autoconcepto (Gustos predefinidos):", font=ctk.CTkFont(weight="bold"), text_color=self.controller.theme_manager.get("text_dim")).pack(anchor="w", padx=30, pady=(10, 0))
-        self.txt_self = ctk.CTkTextbox(self.scroll, height=80, font=("Consolas", 13), fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), border_width=1)
+        self.txt_self = ctk.CTkTextbox(self.scroll, height=80, font=("Consolas", 13), fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), border_width=1, text_color=self.controller.theme_manager.get("text"))
         self.txt_self.pack(fill="x", padx=30, pady=(5, 15))
         self.controller._fix_scroll(self.txt_self)
 

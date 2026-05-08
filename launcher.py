@@ -75,11 +75,13 @@ class MeowLauncher(ctk.CTk):
     def __init__(self):
         super().__init__()
         
+        config_data = ConfigManager.load_json(os.path.join(SETTINGS_DIR, "config.json"), use_lock=True) or {}
+        
         # Inicializar Gestor de Temas Dinámico
-        self.theme_manager = ThemeManager(os.path.join(BASE_DIR, "themes"), "dark")
+        theme_name = config_data.get("theme", "dark")
+        self.theme_manager = ThemeManager(os.path.join(BASE_DIR, "themes"), theme_name)
         
         # Inicializar Gestor de Idiomas
-        config_data = ConfigManager.load_json(os.path.join(SETTINGS_DIR, "config.json"), use_lock=True) or {}
         lang_code = config_data.get("language", "es")
         self.lang_code = lang_code
         self.lang_manager = LanguageManager(os.path.join(SETTINGS_DIR, "locales"), lang_code)
@@ -619,12 +621,16 @@ class MeowLauncher(ctk.CTk):
                 self.bot_process.stdin.flush()
             except Exception: logger.error("Error enviando comando IPC al bot", exc_info=True)
             
-    def send_music_cmd(self, action):
+    def send_music_cmd(self, action, arg=None):
         """Transmisor IPC Estructurado para el módulo musical."""
         if not self.bot_process: return
         payload = {"type": "command", "name": f"music_{action}"}
         
-        if action in ["play", "next"]:
+        # Soporte para argumentos explícitos (Ej: Tarea 24 para enviar el perfil de EQ)
+        if arg is not None:
+            payload["payload"] = {"query": arg}
+        elif action in ["play", "next"]:
+            # Enrutamiento correcto hacia la Vista modular del reproductor
             if hasattr(self, 'music_entry'):
                 query = self.music_entry.get()
                 if query:

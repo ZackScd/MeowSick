@@ -63,9 +63,16 @@ class WizardView(ctk.CTkFrame):
         row_theme = ctk.CTkFrame(self.step1_frame, fg_color="transparent")
         row_theme.pack(fill="x", pady=10)
         ctk.CTkLabel(row_theme, text=self.controller.lang_manager.get("wizard_theme"), width=150, anchor="w").pack(side="left")
-        self.combo_theme = ctk.CTkComboBox(row_theme, values=["dark"], fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), dropdown_fg_color=self.controller.theme_manager.get("bg_card"))
+        
+        theme_dir = os.path.join(BASE_DIR, "themes")
+        available_themes = [f.replace('.json', '') for f in os.listdir(theme_dir) if f.endswith('.json')]
+        if "dark" not in available_themes: available_themes.insert(0, "dark")
+        
+        self.combo_theme = ctk.CTkComboBox(row_theme, values=available_themes, fg_color=self.controller.theme_manager.get("bg_dark"), border_color=self.controller.theme_manager.get("border"), dropdown_fg_color=self.controller.theme_manager.get("bg_card"))
         self.combo_theme.pack(side="left", fill="x", expand=True)
-        self.combo_theme.set("dark")
+        
+        default_theme = self.controller._load_json_file("config.json").get("theme", "dark")
+        self.combo_theme.set(default_theme if default_theme in available_themes else "dark")
         
     def build_step2(self):
         ctk.CTkLabel(self.step2_frame, text=self.controller.lang_manager.get("wizard_step_2"), font=ctk.CTkFont(size=16, weight="bold"), text_color=self.controller.theme_manager.get("text")).pack(anchor="w", pady=(0, 20))

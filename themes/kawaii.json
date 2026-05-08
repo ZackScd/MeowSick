@@ -1,0 +1,12 @@
+{
+    "bg_dark": "#FFE6EA",
+    "bg_sidebar": "#FFD1DA",
+    "bg_card": "#FFF5F6",
+    "accent": "#FF7EB3",
+    "accent_dim": "#FF528E",
+    "border": "#FFB6C1",
+    "text": "#7A3E48",
+    "text_dim": "#A06A75",
+    "green": "#85D6A3",
+    "red": "#FF7575"
+}
