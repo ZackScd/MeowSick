@@ -10,6 +10,7 @@ __pycache__/
 downloads/
 build/
 dist/
+*.exe
 
 # Archivos generados por empaquetado (build.py y PyInstaller)
 build_dist_temp/

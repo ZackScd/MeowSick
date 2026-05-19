@@ -8,6 +8,7 @@ import json
 import sys
 import random
 import math
+import contextlib
 
 try:
     import discord.ext.voice_recv as voice_recv
@@ -137,6 +138,7 @@ class Music(commands.Cog):
         lang_code = self.config.get("language", "es")
         self.outputs = self._load_json(f"locales/outputs_{lang_code}.json") or {} # Carga las traducciones y respuestas.
         self.last_contexts = {} # Persistencia del último contexto de comando recibido, vital para comandos IPC desde el Launcher.
+        self.active_eq = "Normal"
 
     async def cog_check(self, ctx):
         """Comprobación global para todos los comandos del módulo de Música."""
@@ -181,7 +183,35 @@ class Music(commands.Cog):
         music_cfg = self.config.get("music_config", {})
         base.update(music_cfg.get("ffmpeg_options", {}))
                 
+        # Tarea 24: Inyección de directivas de filtro de audio
+        if self.active_eq == "Nightcore":
+            base['options'] += ' -af atempo=1.25,asetrate=44100*1.25'
+        elif self.active_eq == "Vaporwave":
+            base['options'] += ' -af atempo=0.85,asetrate=44100*0.85'
+        elif self.active_eq == "BassBoost":
+            base['options'] += ' -af bass=g=15:f=110:w=0.3'
+        elif self.active_eq == "Saturado":
+            base['options'] += ' -af volume=5.0'
+                
         return base
+
+    @contextlib.asynccontextmanager
+    async def safe_typing(self, ctx):
+        """Context manager seguro para typing que ignora errores 429 de Rate Limit u otros."""
+        typing_ctx = None
+        if hasattr(ctx, "typing"):
+            try: typing_ctx = ctx.typing()
+            except: pass
+                
+        if typing_ctx:
+            try: await typing_ctx.__aenter__()
+            except Exception: typing_ctx = None
+                
+        try: yield
+        finally:
+            if typing_ctx:
+                try: await typing_ctx.__aexit__(None, None, None)
+                except Exception: pass
 
     def _load_json(self, filename):
         """Utilidad interna para carga segura de archivos de configuración JSON."""
@@ -262,13 +292,15 @@ class Music(commands.Cog):
             "shuffle": getattr(self.shuffle, "callback", getattr(self.shuffle, "coro", None)),
             "leave": getattr(self.leave, "callback", getattr(self.leave, "coro", None)),
             "next": getattr(self.next_song, "callback", getattr(self.next_song, "coro", None)),
-            "pls": getattr(self.pls, "callback", getattr(self.pls, "coro", None))
+            "pls": getattr(self.pls, "callback", getattr(self.pls, "coro", None)),
+            "eq": getattr(self.eq, "callback", getattr(self.eq, "coro", None))
         }
         
         coro = commands_map.get(action)
         if coro:
             try:
                 if action in ["play", "next"]: await coro(self, ctx, search=arg)
+                elif action == "eq": await coro(self, ctx, filter_name=arg)
                 else: await coro(self, ctx)
             except Exception as e: print(self.bot.lang.get("sys_ipc_mus_err").format(e=e))
         else:
@@ -466,7 +498,7 @@ class Music(commands.Cog):
             await self._send_msg(ctx, "play_no_args") # Dispara mensaje de reprimenda por parámetros insuficientes.
             return # Frena el comando.
 
-        async with ctx.typing(): # Pone al bot en estado de "escribiendo..." mientras procesa la búsqueda para dar feedback visual.
+        async with self.safe_typing(ctx): # Pone al bot en estado de "escribiendo..." mientras procesa la búsqueda para dar feedback visual.
             try:
                 loop = self.bot.loop # Consigue el puntero al loop de tareas principal de Python.
                 print(self.bot.lang.get("sys_mus_search_log").format(search=search)) # Registro crudo de solicitud.
@@ -602,7 +634,7 @@ class Music(commands.Cog):
             await self._send_msg(ctx, "play_no_args") # Discute la ausencia de petición.
             return # Vaciado y escape.
 
-        async with ctx.typing(): # Interfaz "..." interactiva.
+        async with self.safe_typing(ctx): # Interfaz "..." interactiva.
             try:
                 loop = self.bot.loop # Intercepta el bucle de eventos nativo de Python para uso en hilos paralelos.
                 print(self.bot.lang.get("sys_mus_search_next_log").format(search=search)) # Inyección simple en consola local para debug visual en PC.
@@ -649,7 +681,7 @@ class Music(commands.Cog):
 
         if not await self.connect_to_voice(ctx): return # Requisito forzado de voz, entra si puede. Regresa si no.
 
-        async with ctx.typing(): # Apariencia de pensar...
+        async with self.safe_typing(ctx): # Apariencia de pensar...
             try:
                 loop = self.bot.loop # Intercepta el bucle local para meter las garras con el extractor.
                 print(self.bot.lang.get("sys_mus_search_pls_log").format(url=url)) # Log inofensivo.
@@ -683,6 +715,20 @@ class Music(commands.Cog):
             except Exception as e:
                 print(self.bot.lang.get("sys_mus_pls_cmd_err").format(e=e)) # Documentación local crasheo profundo.
                 await self._send_msg(ctx, "search_error") # Informe formal al gremio discord.
+
+    @commands.command(name="eq")
+    async def eq(self, ctx, *, filter_name: str = "Normal"):
+        """Cambia el filtro de audio/ecualizador."""
+        self.last_contexts[ctx.guild.id] = ctx
+        valid_filters = ["Normal", "Nightcore", "BassBoost", "Vaporwave", "Saturado"]
+        
+        match = next((f for f in valid_filters if f.lower() == filter_name.lower()), "Normal")
+        self.active_eq = match
+        
+        msg = self.bot.lang.get("cmd_eq_changed", "🎵 Filtro de audio cambiado a **{eq}**. Se aplicará en la próxima canción.").format(eq=match)
+        if hasattr(ctx, 'send'):
+            try: await ctx.send(msg)
+            except: pass
 
     # --- 4.4. OBSERVADORES DE EVENTOS DE SESIÓN (LISTENERS) ---
 

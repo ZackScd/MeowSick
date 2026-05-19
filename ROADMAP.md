@@ -144,12 +144,12 @@ MeowSick/
     - `settings/locales/es.json` (y `en.json`): Nuevas claves para la interfaz (`mus_lbl_eq`, `mus_eq_normal`, `mus_eq_nightcore`, `mus_eq_satured`) y para los mensajes del bot (`cmd_eq_changed`).
 
 - **Checklist de Implementación:**
-  - [ ] `launcher.py`: Refactorizar el método `send_music_cmd` para aceptar el parámetro opcional `arg`.
-  - [ ] `settings/locales/es.json` (y `en.json`): Añadir claves de traducción para la vista de efectos.
-  - [ ] `views/music/main_view.py`: Integrar el menú desplegable `CTkOptionMenu` para perfiles EQ.
-  - [ ] `cogs/music.py`: Declarar la variable de estado global `active_eq` e implementar el comando `@commands.command(name="eq")`.
-  - [ ] `cogs/music.py`: Mapear el comando `music_eq` en la función de enrutamiento IPC `ipc_invoke`.
-  - [ ] `cogs/music.py`: Modificar la compilación en `get_ffmpeg_options` para inyectar las directivas de filtros (`-af`).
+  - [x] `launcher.py`: Refactorizar el método `send_music_cmd` para aceptar el parámetro opcional `arg`.
+  - [x] `settings/locales/es.json` (y `en.json`): Añadir claves de traducción para la vista de efectos.
+  - [x] `views/music/main_view.py`: Integrar el menú desplegable `CTkOptionMenu` para perfiles EQ.
+  - [x] `cogs/music.py`: Declarar la variable de estado global `active_eq` e implementar el comando `@commands.command(name="eq")`.
+  - [x] `cogs/music.py`: Mapear el comando `music_eq` en la función de enrutamiento IPC `ipc_invoke`.
+  - [x] `cogs/music.py`: Modificar la compilación en `get_ffmpeg_options` para inyectar las directivas de filtros (`-af`).
 
 ### 📌 Tarea 25: Reorganización de Configuraciones (Básico vs Avanzado)
 - **Fase de Análisis Previo (Obligatorio):**

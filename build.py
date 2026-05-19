@@ -9,6 +9,63 @@ from shared.presets import AI_PRESETS
 # Directorio temporal para los archivos limpios de la distribución
 BUILD_TEMP_DIR = "build_dist_temp"
 
+# --- CONSTANTES DE SALIDA (MENSAJES) POR DEFECTO ---
+DEFAULT_OUTPUTS_ES = {
+    "welcome_message": "¡Hola! He despertado y estoy listo.",
+    "playing_now": "🎵 Reproduciendo ahora: **{title}**",
+    "added_queue": "✅ Añadido a la cola: **{title}**",
+    "play_no_args": "⚠️ Dime qué quieres que busque.",
+    "connect_voice": "⚠️ Necesitas estar en un canal de voz.",
+    "playlist_added": "✅ Playlist cargada. {count} canciones añadidas.",
+    "playlist_no_config": "⚠️ No has configurado una Playlist Especial en el Launcher.",
+    "next_added": "⚡ Se reproducirá a continuación: **{title}**",
+    "skip_msg": "⏭️ Canción saltada.",
+    "nothing_playing": "⚠️ No hay nada sonando ahora mismo.",
+    "paused": "⏸️ Música pausada.",
+    "resumed": "▶️ Música reanudada.",
+    "stop_msg": "⏹️ Música detenida y cola vaciada.",
+    "list_title": "🎵 Cola de Reproducción",
+    "list_empty": "La cola está vacía.",
+    "list_footer": "Página {page}/{total} | Total: {len}",
+    "shuffled": "🔀 Cola mezclada aleatoriamente.",
+    "shuffle_error": "⚠️ No hay suficientes canciones para mezclar.",
+    "queue_finished": "✅ No hay más canciones en la cola.",
+    "timeout_msg": "💤 Me desconecto por inactividad.",
+    "disconnected": "🚪 Me he desconectado del canal de voz.",
+    "not_connected": "⚠️ No estoy conectado a ningún canal.",
+    "connect_error": "❌ Error al conectar al canal de voz.",
+    "search_error": "❌ No pude encontrar resultados o hubo un error.",
+    "ffmpeg_error": "❌ Error crítico: No se encontró FFmpeg en el sistema."
+}
+
+DEFAULT_OUTPUTS_EN = {
+    "welcome_message": "Hello! I am online and ready.",
+    "playing_now": "🎵 Now playing: **{title}**",
+    "added_queue": "✅ Added to queue: **{title}**",
+    "play_no_args": "⚠️ Tell me what to search for.",
+    "connect_voice": "⚠️ You need to be in a voice channel.",
+    "playlist_added": "✅ Playlist loaded. {count} songs added.",
+    "playlist_no_config": "⚠️ You haven't configured a Special Playlist in the Launcher.",
+    "next_added": "⚡ Playing next: **{title}**",
+    "skip_msg": "⏭️ Track skipped.",
+    "nothing_playing": "⚠️ Nothing is playing right now.",
+    "paused": "⏸️ Music paused.",
+    "resumed": "▶️ Music resumed.",
+    "stop_msg": "⏹️ Music stopped and queue cleared.",
+    "list_title": "🎵 Music Queue",
+    "list_empty": "The queue is empty.",
+    "list_footer": "Page {page}/{total} | Total: {len}",
+    "shuffled": "🔀 Queue shuffled randomly.",
+    "shuffle_error": "⚠️ Not enough songs to shuffle.",
+    "queue_finished": "✅ No more songs in the queue.",
+    "timeout_msg": "💤 Disconnected due to inactivity.",
+    "disconnected": "🚪 Disconnected from the voice channel.",
+    "not_connected": "⚠️ I am not connected to any channel.",
+    "connect_error": "❌ Error connecting to voice channel.",
+    "search_error": "❌ Could not find results or an error occurred.",
+    "ffmpeg_error": "❌ Critical error: FFmpeg not found in the system."
+}
+
 # --- CONSTANTES DE IA POR DEFECTO ---
 DEFAULT_PROMPTS = {
     "evolucion_analisis": "Actúa como el subconsciente de la IA.\n\nTu Personalidad Base:\n{identidad}\n\nTRAYECTORIA EMOCIONAL RECIENTE (Últimos 3 cambios):\n{historial}\n\nTu Estado de Ánimo ACTUAL: \"{estado_actual}\"\n\nESTADOS POSIBLES (Guía):\n{estados_posibles}\n\nÚltimas interacciones en el chat:\n{mensajes}\n\nINSTRUCCIONES DE ANÁLISIS:\n1. INERCIA: No cambies de estado bruscamente sin razón. Si el chat es normal, mantén el estado actual o varía levemente.\n2. SELF-TARGETING: ¿Hablan DE TI? (Menciones directas o implícitas). Si hablan de otra cosa, tu estado debe ser neutral/observadora.\n3. ENERGÍA: Enojarse gasta energía. Úsalo solo si te atacan realmente.\n4. ESTRICTO: Tienes PROHIBIDO inventar un estado de ánimo que no esté en la lista de ESTADOS POSIBLES. Debes elegir exactamente uno de la lista.\n\nGenera un JSON:\n{\"estado_animo\": \"Nombre del Estado: Justificación en primera persona\"}",
@@ -41,55 +98,75 @@ def create_clean_dist_files():
     if os.path.exists(os.path.join("settings", "locales")):
         shutil.copytree(os.path.join("settings", "locales"), os.path.join(settings_dir, "locales"))
         
+        # Sanitizar mensajes privados del bot (Evita fuga de textos personalizados del desarrollador)
+        with open(os.path.join(settings_dir, "locales", "outputs_es.json"), "w", encoding="utf-8") as f:
+            json.dump(DEFAULT_OUTPUTS_ES, f, indent=4)
+        with open(os.path.join(settings_dir, "locales", "outputs_en.json"), "w", encoding="utf-8") as f:
+            json.dump(DEFAULT_OUTPUTS_EN, f, indent=4)
+        
     if os.path.exists("themes"):
         shutil.copytree("themes", os.path.join(BUILD_TEMP_DIR, "themes"))
         
     os.makedirs(os.path.join(BUILD_TEMP_DIR, "logs"), exist_ok=True)
 
-    # 1.1b. Configuración Base (Lee del entorno de dev y aplica una máscara de sanitización)
-    local_config_path = os.path.join("settings", "config.json")
-    
-    if os.path.exists(local_config_path):
-        with open(local_config_path, "r", encoding="utf-8") as f:
-            config_content = json.load(f)
-            
-        # Purgar/Sanitizar el estado de desarrollo para garantizar una distribución limpia
-        config_content["language"] = "es"
-        config_content["theme"] = "dark"
-        
-        if "modules" not in config_content: config_content["modules"] = {}
-        for mod in ["ia", "music", "help"]:
-            config_content["modules"][mod] = True # Obliga a que todos los módulos nazcan encendidos
-            
-        if "music_config" not in config_content: config_content["music_config"] = {}
-        
-        if "ai_config" not in config_content: config_content["ai_config"] = {}
-        config_content["ai_config"]["ai_engine"] = "local" # Privacidad por defecto
-        config_content["ai_config"]["target_channels"] = [] # Limpia las IDs privadas del desarrollador
-        config_content["ai_config"]["gamer_mode"] = False
-        config_content["ai_config"]["ai_first_run"] = True
-    else:
-        # Fallback de emergencia si falta el archivo local
-        config_content = {
-            "language": "es",
-            "theme": "dark",
-            "prefix": "!",
-            "modules": {"music": True, "ia": True, "help": True},
-            "music_config": {
-                "inactivity_sleep": 60,
-                "max_retries": 3,
-                "view_timeout": 60,
-                "ytdl_options": {},
-                "ffmpeg_options": {}
-            },
-            "ai_config": {
-                "ai_engine": "local", "ollama_endpoint": "http://localhost:11434", "ollama_model": "gemma3",
-                "target_channels": [], "listen_to_bots": True, "enable_chat": True, "enable_vision": True,
-                "enable_tts": True, "tts_send_text": True, "enable_stt": True, "enable_web_search": True,
-                "auto_web_search": True, "web_search_method": "google", "gamer_mode": False,
-                "ai_first_run": True
-            }
+    # 1.1b. Configuración Base 100% Limpia
+    # Generada completamente desde cero para evitar que CUALQUIER ajuste local del desarrollador
+    # (como API keys sueltas en config, canales, límites de ventana, etc) se filtre a los usuarios finales.
+    config_content = {
+        "language": "es",
+        "theme": "dark",
+        "prefix": "!",
+        "owner_id": 0,
+        "queue_page_limit": 10,
+        "modules": {
+            "music": True, 
+            "ia": True, 
+            "help": True
+        },
+        "music_config": {
+            "inactivity_sleep": 60,
+            "max_retries": 3,
+            "view_timeout": 60,
+            "ytdl_options": {},
+            "ffmpeg_options": {}
+        },
+        "ai_config": {
+            "ai_engine": "local",
+            "ollama_endpoint": "http://localhost:11434",
+            "ollama_model": "gemma3",
+            "fallback_to_cloud": False,
+            "target_channels": [],
+            "listen_to_bots": False,
+            "enable_chat": True,
+            "enable_vision": True,
+            "enable_tts": True,
+            "tts_engine": "edge-tts",
+            "tts_voice": "",
+            "enable_rvc": False,
+            "tts_send_text": True,
+            "enable_stt": True,
+            "enable_web_search": True,
+            "auto_web_search": True,
+            "web_search_method": "google",
+            "web_search_max_results": 3,
+            "gamer_mode": False,
+            "gamer_limit": 5,
+            "ai_first_run": True,
+            "context_window": 15,
+            "mood_eval_buffer": 5,
+            "mood_history_limit": 10,
+            "memory_buffer_limit": 5,
+            "image_size_limit_mb": 8.0,
+            "vision_lookback_limit": 10,
+            "decay_hours": 2.0,
+            "disk_history_limit": 50,
+            "spontaneous_prob": 0.05,
+            "cooldown": 3.0,
+            "repetition_penalty": 1.1,
+            "ai_timeout": 180,
+            "enable_safety_filters": True
         }
+    }
 
     with open(os.path.join(settings_dir, "config.json"), "w", encoding="utf-8") as f:
         json.dump(config_content, f, indent=4)
@@ -194,8 +271,11 @@ def build_executable():
         "--hidden-import=cogs.AI.identity",
         "--hidden-import=cogs.AI.utils",
         "--hidden-import=cogs.AI.evolution",
+        "--hidden-import=cogs.AI.tts_manager",
+        "--hidden-import=cogs.AI.stt_manager",
         "--hidden-import=nacl",
         "--hidden-import=nacl.secret",
+        "--hidden-import=filelock",
         "--hidden-import=build",
         "--hidden-import=yt_dlp",
         "--hidden-import=discord.ext.voice_recv",
@@ -205,13 +285,21 @@ def build_executable():
         "--hidden-import=psutil",
         "--hidden-import=shared",
         "--hidden-import=views",
+        "--hidden-import=customtkinter",
+        "--hidden-import=PIL",
+        "--hidden-import=edge_tts",
+        "--hidden-import=dotenv",
+        "--hidden-import=aiohttp",
         "--collect-all=yt_dlp",
         "--collect-all=discord",
         "--collect-all=nacl",
+        "--collect-all=filelock",
         "--collect-all=faster_whisper",
         "--collect-all=shared",
         "--collect-all=views",
         "--collect-all=themes",
+        "--collect-all=customtkinter",
+        "--collect-all=edge_tts",
         "launcher.py"
     ]
     subprocess.run(command)

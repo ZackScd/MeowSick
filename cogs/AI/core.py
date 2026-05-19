@@ -11,6 +11,22 @@ import sys
 import io
 from PIL import Image
 
+# --- PARCHE DE SEGURIDAD PARA PAQUETES UDP DE VOZ CORRUPTOS ---
+# Evita que el hilo asíncrono de discord-ext-voice-recv se estrelle por un OpusError
+# cuando la conexión de Discord experimenta pérdida de paquetes o micro-cortes.
+try:
+    import discord.opus
+    if hasattr(discord.opus, 'Decoder'):
+        _original_decode = discord.opus.Decoder.decode
+        def _safe_decode(self, data, *, fec=False):
+            try:
+                return _original_decode(self, data, fec=fec)
+            except discord.opus.OpusError:
+                return b'\x00' * 3840 # Retorna 20ms de silencio estéreo absoluto en lugar de crashear
+        discord.opus.Decoder.decode = _safe_decode
+except Exception:
+    pass
+
 # Importamos los módulos locales del paquete AI
 from .utils import ai_manager          # Gestor de conexión y peticiones a la API de Gemini
 from .identity import identity_manager # Gestor estático de identidades y usuarios

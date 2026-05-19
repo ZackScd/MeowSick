@@ -295,7 +295,7 @@ async def console_listener(bot):
                             arg = data.get("payload", {}).get("query", "")
                             
                             if not bot.voice_clients:
-                                if action not in ["play", "next", "pls", "playlist"]:
+                                if action not in ["play", "next", "pls", "playlist", "eq"]:
                                     print(bot.lang.get("sys_ipc_mus_no_vc"))
                                     continue
                                 if not bot.guilds:

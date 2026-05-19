@@ -63,9 +63,17 @@ class MusicFrame(ctk.CTkFrame):
         mk_btn(r2, self.controller.lang_manager.get("mus_btn_shuffle"), "shuffle").pack(side="left", padx=(0, 5), expand=True, fill="x")
         mk_btn(r2, self.controller.lang_manager.get("mus_btn_playlist"), "pls").pack(side="left", expand=True, fill="x")
 
+        # Fila 3: Filtros de Ecualizador (Tarea 24)
+        r3 = ctk.CTkFrame(controls_frame, fg_color="transparent")
+        r3.pack(fill="x", pady=3)
+        ctk.CTkLabel(r3, text=self.controller.lang_manager.get("mus_lbl_eq"), text_color=self.controller.theme_manager.get("text_dim")).pack(side="left", padx=(5, 10))
+        eq_options = [self.controller.lang_manager.get("mus_eq_normal"), self.controller.lang_manager.get("mus_eq_nightcore"), self.controller.lang_manager.get("mus_eq_bassboost"), self.controller.lang_manager.get("mus_eq_vaporwave"), self.controller.lang_manager.get("mus_eq_satured")]
+        self.eq_menu = ctk.CTkOptionMenu(r3, values=eq_options, width=150, fg_color=self.controller.theme_manager.get("bg_card"), button_color=self.controller.theme_manager.get("bg_sidebar"), button_hover_color=self.controller.theme_manager.get("border"), command=lambda val: self.controller.send_music_cmd("eq", ["Normal", "Nightcore", "BassBoost", "Vaporwave", "Saturado"][eq_options.index(val)] if val in eq_options else "Normal"))
+        self.eq_menu.pack(side="left", fill="x", expand=True)
+
         # 4. Now Playing (Actualizado dinámicamente)
         self.controller.lbl_now_playing = ctk.CTkLabel(self, text=self.controller.lang_manager.get("mus_lbl_now_playing_empty"), font=ctk.CTkFont(size=13, weight="bold"), text_color=self.controller.theme_manager.get("accent"), anchor="w")
-        self.controller.lbl_now_playing.grid(row=3, column=0, sticky="ew", padx=10, pady=(5, 5))
+        self.controller.lbl_now_playing.grid(row=3, column=0, sticky="ew", padx=10, pady=(0, 5))
 
         # 5. Lista de Cola (Expandida)
         ctk.CTkLabel(self, text=self.controller.lang_manager.get("mus_lbl_queue"), text_color=self.controller.theme_manager.get("text_dim"), anchor="w", font=ctk.CTkFont(size=12, weight="bold")).grid(row=4, column=0, sticky="ew", padx=5, pady=(5, 2))
